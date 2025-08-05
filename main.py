@@ -1,26 +1,36 @@
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+import falcon
+from falcon import Request, Response
+from falcon.asgi import App
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Date, Time, func
+from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session, relationship
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, redirect, url_for, render_template, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-from sqlalchemy.sql import func
+import json
+import datetime
 
-app = Flask(__name__)
+# SQLAlchemy setup
+Base = declarative_base()
+engine = create_engine("sqlite:///keystone.db")
+Session = scoped_session(sessionmaker(bind=engine))
 
-# DB for Keystone web-site
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///keystone.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.secret_key = 'your_secret_key_here'  # нужно для сессий
+# Middleware
+class SimpleLoggerMiddleware:
+    async def process_request(self, req: Request, resp: Response):
+        print(f"[{req.method}] {req.path} - {req.remote_addr}")
 
-db = SQLAlchemy(app)
+    async def process_response(self, req: Request, resp: Response, resource, req_succeeded):
+        print(f"Response status: {resp.status}")
+
+
+# Falcon app
+app = App(middleware=[SimpleLoggerMiddleware()])
 
 # Models
-class Admin(db.Model):
+class Admin(Base):
     __tablename__ = 'admins'
 
-    id = db.Column(db.Integer, primary_key=True)
-    login = db.Column(db.String(50), nullable=False, unique=True)
-    password = db.Column(db.String(255), nullable=False)
+    id = Column(Integer, primary_key=True)
+    login = Column(String(50), nullable=False, unique=True)
+    password = Column(String(255), nullable=False)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -29,184 +39,527 @@ class Admin(db.Model):
         return check_password_hash(self.password, password)
 
 
-class Page(db.Model):
+class Page(Base):
     __tablename__ = 'pages'
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    slug = db.Column(db.String(255), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class ContentBlock(db.Model):
+class ContentBlock(Base):
     __tablename__ = 'content_blocks'
 
-    id = db.Column(db.Integer, primary_key=True)
-    page_id = db.Column(db.Integer, db.ForeignKey('pages.id', ondelete='CASCADE'), nullable=False)
-    identifier = db.Column(db.String(255), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    id = Column(Integer, primary_key=True)
+    page_slug = Column(String, ForeignKey('pages.slug', ondelete='CASCADE'), nullable=False)
+    identifier = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Servant(db.Model):
+class Servant(Base):
     __tablename__ = 'servants'
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    surname = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), nullable=False, unique=True)
-    phone = db.Column(db.String(50), nullable=False, unique=True)
-    role = db.Column(db.String(255), nullable=False)
-    birth_date = db.Column(db.Date, nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    surname = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True, unique=True)
+    phone = Column(String(50), nullable=True, unique=True)
+    role = Column(Text, nullable=True)
+    birth_date = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Parishioner(db.Model):
+class Parishioner(Base):
     __tablename__ = 'parishioners'
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    surname = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), nullable=False, unique=True)
-    phone = db.Column(db.String(50), nullable=False, unique=True)
-    birth_date = db.Column(db.Date, nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    surname = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True, unique=True)
+    phone = Column(String(50), nullable=True, unique=True)
+    birth_date = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Service(db.Model):
+class Service(Base):
     __tablename__ = 'services'
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    time = db.Column(db.Time, nullable=False)
-    location = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    servant_id = db.Column(db.Integer, db.ForeignKey('servants.id', ondelete='CASCADE'), nullable=False)
-    parishioner_id = db.Column(db.Integer, db.ForeignKey('parishioners.id', ondelete='CASCADE'), nullable=False)
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    identifier = Column(String(255), nullable=False)
+    date = Column(Date, nullable=False)
+    time = Column(Time, nullable=False)
+    location = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    servant_id = Column(Integer, ForeignKey('servants.id', ondelete='CASCADE'), nullable=False)
+    parishioner_id = Column(Integer, ForeignKey('parishioners.id', ondelete='CASCADE'), nullable=False)
 
 
-class Event(db.Model):
+class Event(Base):
     __tablename__ = 'events'
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    location = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    servant_id = db.Column(db.Integer, db.ForeignKey('servants.id', ondelete='CASCADE'), nullable=False)
-    parishioner_id = db.Column(db.Integer, db.ForeignKey('parishioners.id', ondelete='CASCADE'), nullable=False)
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    date = Column(Date, nullable=False)
+    location = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    servant_id = Column(Integer, ForeignKey('servants.id', ondelete='CASCADE'), nullable=False)
+    parishioner_id = Column(Integer, ForeignKey('parishioners.id', ondelete='CASCADE'), nullable=False)
+
+class New(Base):
+    __tablename__ = "news"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(320), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-with app.app_context():
-    db.create_all()
-    print("DB and tables succesfully created!")
+# Resource handlers
+class HomeResource:
+    async def on_get(self, req: Request, resp: Response):
+        resp.media = {"message": "Простой CRUD на Falcon и SQLAlchemy!"}
 
 
-# admin panel 
+class AdminResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        admins = session.query(Admin).all()
+        data = [{"id": a.id, "login": a.login} for a in admins]
+        session.close()
+        resp.media = data
 
-# API Routes
-
-@app.route('/home')
-def home():
-    return 'Простой CRUD на Flask и SQLAlchemy!'
-
-@app.route('/')
-def index():
-    return render_template('index.html')   
-
-# API CRUD
-
-@app.route('/admin_add', methods=['GET', 'POST'])
-def admin_add():
-    if request.method == 'POST':
-        login = request.form['login']
-        password = request.form['password']
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        login = data.get("login")
+        password = data.get("password")
         admin = Admin(login=login)
         admin.set_password(password)
-        db.session.add(admin)
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('admin_add.html', action='Create') 
-        
-
-@app.route('/admin_list', methods=['GET'])
-def admin_list():
-    admins = Admin.query.all()
-    return render_template('admin_list.html', admins=admins)
-
-@app.route('/admin_detail/<int:id>', methods=['GET'])
-def admin_detail(id):
-    admin = Admin.query.get_or_404(id) 
-    return render_template('admin_detail.html', admin=admin)    
-
-@app.route('/admin_edit/<int:id>', methods=['GET', 'POST'])
-def admin_edit(id):
-    admin = Admin.query.get_or_404(id)
-    if request.method == 'POST':
-        admin.login = request.form['login']
-        password = request.form['password']
-        if password:
-            admin.set_password(password)
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('admin_edit.html', admin=admin, action='Edit')
-
-@app.route('/admin_delete/<int:id>') 
-def admin_delete(id):
-    admin = Admin.query.get_or_404(id)
-    db.session.delete(admin)
-    db.session.commit()
-    return redirect(url_for('index'))      
+        session.add(admin)
+        session.commit()
+        session.close()
+        resp.media = {"message": "Admin created"}
 
 
-@app.route('/page_create', methods=['GET', 'POST'])
-def page_create():
-    if request.method == 'POST':
-        title = request.form['title']
-        slug = request.form['slug']
+class AdminDetailResource:
+    async def on_get(self, req, resp, admin_id):
+        session = Session()
+        admin = session.query(Admin).get(admin_id)
+        if not admin:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Admin not found"}
+        else:
+            resp.media = {"id": admin.id, "login": admin.login}
+        session.close()
+
+    async def on_put(self, req, resp, admin_id):
+        session = Session()
+        data = await req.media
+        admin = session.query(Admin).get(admin_id)
+        if not admin:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Admin not found"}
+        else:
+            admin.login = data.get("login", admin.login)
+            password = data.get("password")
+            if password:
+                admin.set_password(password)
+            session.commit()
+            resp.media = {"message": "Admin updated"}
+        session.close()
+
+    async def on_delete(self, req, resp, admin_id):
+        session = Session()
+        admin = session.query(Admin).get(admin_id)
+        if not admin:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Admin not found"}
+        else:
+            session.delete(admin)
+            session.commit()
+            resp.media = {"message": "Admin deleted"}
+        session.close()
+
+
+class PageResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        pages = session.query(Page).all()
+        data = [{"id": p.id, "title": p.title, "slug": p.slug} for p in pages]
+        session.close()
+        resp.media = data
+
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        title = data.get("title")
+        slug = data.get("slug")
         page = Page(title=title, slug=slug)
-        db.session.add(page)
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('page_create.html', action='Create')
-
-@app.route('/page_list', methods=['GET'])
-def page_list():   
-    pages = Page.query.all()
-    return render_template('page_list.html', pages=pages)
-
-@app.route('/page_detail/<slug>', methods=['GET'])
-def page_detail(slug):   
-    page = Page.query.filter_by(slug=slug).first_or_404()
-    return render_template('page_detail.html', page=page) 
-
-@app.route('/page_edit/<slug>', methods=['GET','POST'])
-def page_edit(slug):
-    page = Page.query.filter_by(slug=slug).first_or_404()
-    if request.method == 'POST':
-        page.title = request.form['title']
-        page.slug = request.form['slug']
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('page_edit.html', page=page, action='Edit')
-
-@app.route('/page_delete/<slug>')
-def page_delete(slug):
-    page = Page.query.filter_by(slug=slug).first_or_404()
-    db.session.delete(page)
-    db.session.commit()
-    return redirect(url_for('index'))        
+        session.add(page)
+        session.commit()
+        session.close()
+        resp.media = {"message": "Page created"}
 
 
-# entry point
-if __name__ == '__main__':
-    app.run(debug=True)
+class PageDetailResource:
+    async def on_get(self, req, resp, slug):
+        session = Session()
+        page = session.query(Page).filter_by(slug=slug).first()
+        if not page:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Page not found"}
+        else:
+            resp.media = {"id": page.id, "title": page.title, "slug": page.slug}
+        session.close()
+
+    async def on_put(self, req, resp, slug):
+        session = Session()
+        data = await req.media
+        page = session.query(Page).filter_by(slug=slug).first()
+        if not page:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Page not found"}
+        else:
+            page.title = data.get("title", page.title)
+            page.slug = data.get("slug", page.slug)
+            session.commit()
+            resp.media = {"message": "Page updated"}
+        session.close()
+
+    async def on_delete(self, req, resp, slug):
+        session = Session()
+        page = session.query(Page).filter_by(slug=slug).first()
+        if not page:
+            resp.status = falcon.HTTP_404
+            resp.media = {"error": "Page not found"}
+        else:
+            session.delete(page)
+            session.commit()
+            resp.media = {"message": "Page deleted"}
+        session.close()
+
+
+class ContentBlockResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        contentblocks = session.query(ContentBlock).all()
+        data = [{
+            'id': cb.id,
+            'page_slug': cb.page_slug,
+            'identifier': cb.identifier,
+            'content': cb.content
+        } for cb in contentblocks]
+        session.close()
+        resp.media = data
+
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.get_media()
+        page_id = data.get('page_id')
+        identifier = data.get('identifier')
+        content = data.get('content')
+        contentBlock = ContentBlock(page_id=page_id, identifier=identifier, content=content)
+        session.add(contentBlock)
+        session.commit()
+        session.close()
+        resp.media = {"message": "ContentBlock created"}
+
+
+class ContentBlockDetailResource:
+    async def on_get(self, req, resp, identifier):
+        session = Session()
+        contentBlock = session.query(ContentBlock).filter_by(identifier=identifier).first()
+        if not contentBlock:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'ContentBlock not found'}
+        else:
+            resp.media = {
+                'id': contentBlock.id,
+                'identifier': contentBlock.identifier,
+                'content': contentBlock.content,
+                'page_id': contentBlock.page_id
+            }
+        session.Сlose()
+
+    async def on_put(self, req, resp, identifier):
+        session = Session()
+        data = await req.media
+        contentBlock = session.query(ContentBlock).filter_by(identifier=identifier).first()
+        if not contentBlock:
+            resp.status = falcon.HTTP_404 
+            resp.media = {'error': 'ContentBlock not found'}
+        else:
+            contentBlock.page_slug = data.get('page_slug', contentBlock.page_slug)
+            contentBlock.identifier = data.get('identifier', contentBlock.identifier)
+            contentBlock.content = data.get('content', contentBlock.content)
+            session.commit()
+            resp.media = {'message': 'ContentBlock updated'}
+        session.close()
+
+    async def on_delete(self, req, resp, identifier):
+        session = Session()
+        data = await req.media 
+        contentBlock = session.query(ContentBlock).filter_by(identifier=identifier).first()
+        if not contentBlock:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'ContentBlock not found'}
+        else:
+            session.delete(contentBlock)
+            session.commit()
+            resp.media = {'message': 'ContentBlock deleted'}
+        session.close()
+
+
+class ServantResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        servants = session.query(Servant).all()
+        data = [{'id': s.id, 'name': s.name, 'surname': s.surname, 'email': s.email, 'phone': s.phone, 'role': s.role, 'birth_date': s.birth_date} for s in servants]
+        session.close()
+        resp.media = data
+
+    async def on_post(self, req, resp):   
+        session = Session()
+        data = await req.media
+        name = data.get('name')
+        surname = data.get('surname')
+        email = data.get('email')
+        phone = data.get('phone')
+        role = data.get('role')
+        birth_date = data.get('birth_date')
+        session.add()
+        session.commit()
+        session.close()
+        resp.media = {'message': 'Servant created'}
+
+         
+class ServantDetailResource:
+    async def on_get(self, req, resp, servant_id):
+        session = Session()
+        servant = session.query(Servant).get(servant_id)
+        if not servant:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Servant not found'}
+        else:
+            resp.media = {
+                'id': servant.id,
+                'name': servant.name,
+                'surname': servant.surname,
+                'email': servant.email,
+                'phone': servant.phone,
+                'role': servant.role,
+                'birth_date': servant.birth_date
+            }
+        session.close() 
+
+    async def on_put(self, req, resp, servant_id):
+        session = Session()
+        data = await req.media
+        servant = session.query(Servant).get(servant_id)
+        if not servant:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Servant not found'}
+        else:
+            servant.name = data.get('name', servant.name)
+            servant.surname = data.get('sername', servant.surname)
+            servant.email = data.get('email', servant.email)
+            servant.phone = data.get('phone', servant.phone)
+            servant.role = data.get('role', servant.role)
+            servant.birth_date = data.get('birth_date', servant.birth_date)
+            session.commit()
+            resp.mdeia = {'message', 'Servant updated'}
+        session.close()           
+
+    async def on_delete(self, req, resp, servant_id):
+        session = Session()
+        servant = session.query(Servant).get(servant_id)
+        if not servant:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'PServant not found'}
+        else:
+            session.delete(servant)
+            session.commit()
+            resp.media = {'message': 'Servant deleted'}
+        session.close()      
+
+
+class ParishionerResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        parishioner = session.query(Parishioner).all()
+        data = [{'id': par.id, 'name': par.name, 'surname': par.surname, 'email': par.email, 'phone': par.phone, 'birth_date': par.birth_date}]
+        session.close()
+        resp.media = data
+
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media 
+        name = data.get('name')
+        surname = data.get('surname')
+        email = data.get('email')
+        phone = data.get('phone')
+        birth_date = data.get('birth_date')
+        parishioner = Parishioner(name=name, surname=surname, email=email, phone=phone, birth_date=birth_date)
+        session.add(parishioner)
+        session.commit()
+        session.close()
+        resp.media = {'message': 'Parishioner created'}
+
+
+class ParishionerDetailResource:
+    async def on_get(self, req, resp, parishioner_id):
+        session = Session()
+        parishioner = session.query(Parishioner).get(parishioner_id)
+        if not parishioner:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Parishioner not found'}
+        else:
+            resp.media = {
+                'id': parishioner.id,
+                'name': parishioner.name,
+                'surname': parishioner.surname,
+                'email': parishioner.email,
+                'phone': parishioner.birth_date
+            }
+        session.close()        
+
+    async def on_put(self, req, resp, parishioner_id):
+        session = Session()
+        data = await req.media
+        parishioner = session.query(Parishioner).get(parishioner_id)
+        if not parishioner:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Parishiner not found'}
+        else:
+            parishioner.name = data.get('name', parishioner.name)
+            parishioner.surname = data.get('surname', parishioner.surname)
+            parishioner.email = data.get('email', parishioner.email)
+            parishioner.phone = data.get('phone', parishioner.phone)
+            parishioner.birth_date = data.get('birth_date', parishioner.birth_date)
+            session.commit()
+            resp.media = {'message': 'Parishioner updated'}
+        session.close()        
+        
+    async def on_delete(self, req, resp, parishioner_id):
+        session = Session()
+        parishioner = session.query(Parishioner).get(parishioner_id)
+        if not parishioner:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Parishioner not found'}
+        else:
+            session.delete(parishioner)
+            session.commit()
+            resp.media = {'message': 'Parishioner deleted'}
+        session.close()
+
+
+class ServiceResource:
+    async def on_get(self, req, resp):
+        session = Session()
+        services = session.query(Service).all()
+        data = [{'id': se.id,
+                 'title': se.title,
+                 'description': se.description, 
+                 'identifier':  se.identifier,
+                 'date': se.date,
+                 'time': se.time,
+                 'location': se.location,
+                 'servant_id': se.servant_id,
+                 'parishoner_id': se.parishioner_id
+                 }
+                 for se in services
+                 ]
+        session.close()
+        resp.media = data 
+
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        title = data.get('title')
+        description = data.get('description')
+        identifier = data.get('identifier')
+        date = data.get('date')
+        time = date.get('time')
+        location = date.get('location')
+        servant_id = date.get('servant_id')
+        parishioner_id = date.get('parishioner_id')
+        service = Service(title=title, description=description, date=date, time=time, location=location, servant_id=servant_id, parishioner_id=parishioner_id)
+        session.add(service)
+        session.commit()
+        session.close()
+        resp.media = {'message': 'Service created'} 
+
+class ServiceDetailResource:
+    async def on_get(self, req, resp, identifier):
+        session = Session()
+        service = session.query(Service).get(identifier)
+        if not service:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Service not found'}
+        else:
+            resp.media = {
+                'id': service.id,
+                'title': service.title,
+                'description': service.description,
+                'identifier': service.identifier,
+                'date': service.date,
+                'time': service.time,
+                'location': service.location,
+                'servant_id': service.servant_id,
+                'parishioner_id': service.parishioner_id
+            }
+        session.close()        
+
+    async def on_put(self, req, res, identifier):
+        session = Session()
+        data = await req.media
+        service = session.query(Service).get(identifier)
+        if not service:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Servcie not found'}
+        else:
+            service.title = data.get('title', service.title)
+            service.description = data.get('description', service.description)
+            service.identifier = data.get('identifier', service.identifier)
+            service.date = data.get('date', service.date)
+            service.time = data.get('time', service.time)
+            service.location = data.get('location', service.location)
+            service.servant_id = data.get('servant id', service.servant_id)
+            service.paerishioner_id = data.get('parishioner id', service.parishioner_id)
+            session.commit()
+            resp.media = {'message': 'Service updated'}
+        session.close()
+          
+    async def on_delete(self, req, resp, identifier):    
+        pass                
+
+
+# DB init
+Base.metadata.create_all(engine)
+
+# Routes
+app.add_route("/home", HomeResource())
+app.add_route("/admins", AdminResource())
+app.add_route("/admins/{admin_id:int}", AdminDetailResource())
+app.add_route("/pages", PageResource())
+app.add_route("/pages/{slug}", PageDetailResource())
+app.add_route("/content_blocks", ContentBlockResource())
+app.add_route("/content_blocks/{identifier}", ContentBlockDetailResource())
+app.add_route("/servants", ServantResource())
+app.add_route("/servants/{servant_id:id}", ServantDetailResource())
+app.add_route("/parishioners", ParishionerResource())
+app.add_route("/parishioners/{parishioner_id:id}", ParishionerDetailResource())
+app.add_route("/services/", ServiceResource())
+app.add_route("/services/{identifier}", ServiceDetailResource())
