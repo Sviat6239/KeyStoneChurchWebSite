@@ -543,7 +543,16 @@ class ServiceDetailResource:
         session.close()
           
     async def on_delete(self, req, resp, identifier):    
-        pass                
+        session = Session()
+        service = service.query(Service).get(identifier)
+        if not service:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Service not found'}
+        else:
+            session.delete(service)
+            session.commit()
+            resp.media = {'message': 'Service deleted'}
+        session.close()                    
 
 
 # DB init
