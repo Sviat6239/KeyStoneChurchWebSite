@@ -537,7 +537,7 @@ class ServiceDetailResource:
             service.time = data.get('time', service.time)
             service.location = data.get('location', service.location)
             service.servant_id = data.get('servant id', service.servant_id)
-            service.paerishioner_id = data.get('parishioner id', service.parishioner_id)
+            service.parishioner_id = data.get('parishioner id', service.parishioner_id)
             session.commit()
             resp.media = {'message': 'Service updated'}
         session.close()
@@ -554,6 +554,36 @@ class ServiceDetailResource:
             resp.media = {'message': 'Service deleted'}
         session.close()                    
 
+class EventResource:
+    async def op_get(self, req, resp):
+        session = Session()
+        event = session.query(Event).all()
+        data = [{
+            'id': ev.id,
+            'title': ev.title, 
+            'description': ev.description, 
+            'date': ev.date, 
+            'location': ev.location, 
+            'servant_id': ev.servant_id, 
+            'parishioner_id': ev.parishioner_id
+            }]
+        session.close()
+        resp.media = data
+
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        title = data.get('title')
+        description = data.get('description')
+        date = data.get('date')
+        location = data.get('location')
+        servant_id = data.get('servant id')
+        parishioner_id = data.ger('parishioner id')
+        event = Event(title=title, description=description, date=date, location=location, servant_id=servant_id, parishioner_id=parishioner_id)
+        session.add(event)
+        session.commit()
+        session.close()
+        resp.media = {'message', 'Event created'}
 
 # DB init
 Base.metadata.create_all(engine)
