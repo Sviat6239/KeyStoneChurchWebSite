@@ -6,6 +6,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session, relat
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import datetime
+import uuid 
 
 # SQLAlchemy setup
 Base = declarative_base()
@@ -139,8 +140,42 @@ class Post(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
+class SessionToken(Base):
+    __tablename__ = 'session_tokens'
+
+    id = Column(Integer, primary_key=True)
+    admin_id = Column(Integer, ForeignKey('admins.id'))
+    token = Column(String, unique=True)
+    created_at = Column(DateTime)    
+
+
+#login 
+class LoginResource:
+    session = Session()
+    data = await req.media
+    login = data.get('login')
+    password = data.get('password')
+
+    user = session.query(Admin).filter_by(login=login).first()
+
+    if not user or not user.check_password(password):
+        resp.status = falcon.HTTP_401
+        resp.media = {'error': 'Invalid login or password'}
+        return
+
+    token = str(uuid.uuid4())   
+    
+    new_token = SessionToken(admin_id=user.id, token=token, created_at=datetime.datetime.utcnow())
+    session.add(new_token)
+    session.commit()
+    session.close()
+
+    resp.media = {'token': token}
+
 
 # Resource handlers
+
+
 class HomeResource:
     async def on_get(self, req: Request, resp: Response):
         resp.media = {"message": "Простой CRUD на Falcon и SQLAlchemy!"}
