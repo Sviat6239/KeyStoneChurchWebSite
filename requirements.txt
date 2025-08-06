@@ -3,4 +3,4 @@ uvicorn
 sqlalchemy
 werkzeug
 aiofiles
-uuid
+

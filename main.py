@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import datetime
 import uuid 
+from functools import wraps
 
 # SQLAlchemy setup
 Base = declarative_base()
@@ -146,7 +147,9 @@ class SessionToken(Base):
     id = Column(Integer, primary_key=True)
     admin_id = Column(Integer, ForeignKey('admins.id'))
     token = Column(String, unique=True)
-    created_at = Column(DateTime)    
+    created_at = Column(DateTime)
+    last_active = Column(DateTime)
+    admin = relationship("Admin")
 
 
 #login 
@@ -167,7 +170,7 @@ class LoginResource:
 
         token = str(uuid.uuid4())   
         
-        new_token = SessionToken(admin_id=user.id, token=token, created_at=datetime.datetime.utcnow())
+        new_token = SessionToken(admin_id=admin.id, token=token, created_at=datetime.datetime.utcnow())
         session.add(new_token)
         session.commit()
         session.close()
@@ -201,6 +204,49 @@ class LogoutResource:
         resp.media = {'message': 'Logged out successfully'}
 
 
+from functools import wraps
+from datetime import datetime, timedelta
+import falcon
+
+def login_required(func):
+    @wraps(func)
+    async def wrapper(self, req, resp, *args, **kwargs):
+        auth_header = req.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            resp.status = falcon.HTTP_401
+            resp.media = {'error': 'Authorization header missing or malformed'}
+            return
+
+        token = auth_header[len('Bearer '):].strip()
+
+        session = Session()
+        try:
+            session_token = session.query(SessionToken).filter_by(token=token).first()
+
+            if not session_token:
+                resp.status = falcon.HTTP_403
+                resp.media = {'error': 'Invalid or expired token'}
+                return
+
+            if session_token.last_active and (datetime.utcnow() - session_token.last_active) > timedelta(minutes=60):
+                session.delete(session_token)
+                session.commit()
+                resp.status = falcon.HTTP_403
+                resp.media = {'error': 'Session expired'}
+                return
+
+            session_token.last_active = datetime.utcnow()
+            session.commit()
+            req.context.user = session_token.admin
+
+        finally:
+            session.close()
+
+        return await func(self, req, resp, *args, **kwargs)
+
+    return wrapper
+
+
 # Resource handlers
 class HomeResource:
     async def on_get(self, req: Request, resp: Response):
@@ -215,6 +261,7 @@ class AdminResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -229,6 +276,7 @@ class AdminResource:
 
 
 class AdminDetailResource:
+    @login_required
     async def on_get(self, req, resp, admin_id):
         session = Session()
         admin = session.query(Admin).get(admin_id)
@@ -239,6 +287,7 @@ class AdminDetailResource:
             resp.media = {"id": admin.id, "login": admin.login}
         session.close()
 
+    @login_required
     async def on_put(self, req, resp, admin_id):
         session = Session()
         data = await req.media
@@ -255,6 +304,7 @@ class AdminDetailResource:
             resp.media = {"message": "Admin updated"}
         session.close()
 
+    @login_required
     async def on_delete(self, req, resp, admin_id):
         session = Session()
         admin = session.query(Admin).get(admin_id)
