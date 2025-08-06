@@ -151,31 +151,57 @@ class SessionToken(Base):
 
 #login 
 class LoginResource:
-    session = Session()
-    data = await req.media
-    login = data.get('login')
-    password = data.get('password')
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        login = data.get('login')
+        password = data.get('password')
 
-    admin = session.query(Admin).filter_by(login=login).first()
+        admin = session.query(Admin).filter_by(login=login).first()
 
-    if not admin or not admin.check_password(password):
-        resp.status = falcon.HTTP_401
-        resp.media = {'error': 'Invalid login or password'}
-        return
+        if not admin or not admin.check_password(password):
+            resp.status = falcon.HTTP_401
+            resp.media = {'error': 'Invalid login or password'}
+            session.close()
+            return
 
-    token = str(uuid.uuid4())   
-    
-    new_token = SessionToken(admin_id=user.id, token=token, created_at=datetime.datetime.utcnow())
-    session.add(new_token)
-    session.commit()
-    session.close()
+        token = str(uuid.uuid4())   
+        
+        new_token = SessionToken(admin_id=user.id, token=token, created_at=datetime.datetime.utcnow())
+        session.add(new_token)
+        session.commit()
+        session.close()
 
-    resp.media = {'token': token}
+        resp.media = {'token': token}
+ 
+
+class LogoutResource:
+    async def on_delete(self, req, resp):
+        session = Session()
+        data = await req.media
+        token = data.get('token')
+
+        if not token:
+            resp.status = falcon.HTTP_400
+            resp.media = {'error': 'Token required'}
+            session.close()
+            return
+
+        session_token = session.query(SessionToken).filter_by(token=token).first()
+        if not session_token:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Token not found'}
+            session.close()
+            return
+
+        session.delete(session_token)
+        session.commit()
+        session.close()
+
+        resp.media = {'message': 'Logged out successfully'}
 
 
 # Resource handlers
-
-
 class HomeResource:
     async def on_get(self, req: Request, resp: Response):
         resp.media = {"message": "Простой CRUD на Falcon и SQLAlchemy!"}
