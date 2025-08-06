@@ -781,7 +781,17 @@ class PostDetailResource:
         session.close()        
 
     async def on_delete(self, req, resp, post_id):
-        pass    
+        session = Session()
+        post = session.query(Post).get(post_id)
+        if not post:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error', 'Post not found'}
+        else:
+            session.delete(post)
+            session.commit()
+            resp.media = {'message': 'Post deleted'}
+        session.close()        
+
 
 # DB init
 Base.metadata.create_all(engine)
@@ -795,9 +805,9 @@ app.add_route("/pages/{slug}", PageDetailResource())
 app.add_route("/content_blocks", ContentBlockResource())
 app.add_route("/content_blocks/{identifier}", ContentBlockDetailResource())
 app.add_route("/servants", ServantResource())
-app.add_route("/servants/{servant_id:id}", ServantDetailResource())
+app.add_route("/servants/{servant_id:int}", ServantDetailResource())
 app.add_route("/parishioners", ParishionerResource())
-app.add_route("/parishioners/{parishioner_id:id}", ParishionerDetailResource())
+app.add_route("/parishioners/{parishioner_id:int}", ParishionerDetailResource())
 app.add_route("/services/", ServiceResource())
 app.add_route("/services/{identifier}", ServiceDetailResource())
 app.add_route("/events", EventResource())
@@ -805,4 +815,4 @@ app.add_route("/events/{identifier}", EventDetailResource())
 app.add_route("/news", NewResorce())
 app.add_route("/news/{identifier}", NewDetailResource())
 app.add_route("/posts", PostResource())
-app.add_route("/posts/{post_id:id}", PostDetailResource())
+app.add_route("/posts/{post_id:int}", PostDetailResource())
