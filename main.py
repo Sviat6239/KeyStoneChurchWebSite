@@ -719,7 +719,16 @@ class NewDetailResource:
         session.close()        
 
     async def on_delete(self, req, resp, identifier):
-        pass
+        session = Session()
+        new = session.query(New).get(identifier)
+        if not new:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'New not found'}
+        else:
+            session.delete(new)
+            session.commit()
+            resp.media = {'message': 'New deleted'}
+        session.close()        
 
 
 class PostResource:
