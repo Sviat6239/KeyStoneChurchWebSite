@@ -704,7 +704,19 @@ class NewDetailResource:
         session.close()                
 
     async def on_put(self, req, resp, identifier):
-        pass
+        session = Session()
+        data = await req.media
+        new = session.query(New).get(identifier)
+        if not new:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'New not found'}
+        else:
+            new.identifier = data.get('identifier', new.identifier)
+            new.title = data.get('title', new.title)
+            new.content = data.get('content', new.content)
+            session.commit()
+            resp.media = {'message': 'New updated'}
+        session.close()        
 
     async def on_delete(self, req, resp, identifier):
         pass
