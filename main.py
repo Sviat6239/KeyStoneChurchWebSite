@@ -303,7 +303,7 @@ class ContentBlockDetailResource:
                 'id': contentBlock.id,
                 'identifier': contentBlock.identifier,
                 'content': contentBlock.content,
-                'page_id': contentBlock.page_id
+                'page_slug': contentBlock.page_slug
             }
         session.Сlose()
 
@@ -446,7 +446,8 @@ class ParishionerDetailResource:
                 'name': parishioner.name,
                 'surname': parishioner.surname,
                 'email': parishioner.email,
-                'phone': parishioner.birth_date
+                'phone': parishioner.phone,
+                'birth_date': parishioner.birth_date
             }
         session.close()        
 
@@ -456,7 +457,7 @@ class ParishionerDetailResource:
         parishioner = session.query(Parishioner).get(parishioner_id)
         if not parishioner:
             resp.status = falcon.HTTP_404
-            resp.media = {'error': 'Parishiner not found'}
+            resp.media = {'error': 'Parishioner not found'}
         else:
             parishioner.name = data.get('name', parishioner.name)
             parishioner.surname = data.get('surname', parishioner.surname)
@@ -571,7 +572,7 @@ class ServiceDetailResource:
 
 
 class EventResource:
-    async def op_get(self, req, resp):
+    async def on_get(self, req, resp):
         session = Session()
         events = session.query(Event).all()
         data = [{
