@@ -676,8 +676,16 @@ class NewResorce:
         resp.media = data
 
     async def on_post(self, req, resp):
-        pass
-
+        session = Session()
+        data = await req.media
+        identifier = data.get('identifier')
+        title = data.get('title')
+        content = data.get('content')
+        new = New(identifier=identifier, title=title, content=content)
+        session.add(new)
+        session.commit()
+        session.close()
+        resp.media = {'message': 'New created'}
 
 class NewDetailResource:
     async def on_get(self, req, resp, identifier):
