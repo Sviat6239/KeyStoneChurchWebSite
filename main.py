@@ -254,6 +254,7 @@ class HomeResource:
 
 
 class AdminResource:
+    @login_required
     async def on_get(self, req, resp):
         session = Session()
         admins = session.query(Admin).all()
@@ -326,6 +327,7 @@ class PageResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -349,6 +351,7 @@ class PageDetailResource:
             resp.media = {"id": page.id, "title": page.title, "slug": page.slug}
         session.close()
 
+    @login_required
     async def on_put(self, req, resp, slug):
         session = Session()
         data = await req.media
@@ -363,6 +366,7 @@ class PageDetailResource:
             resp.media = {"message": "Page updated"}
         session.close()
 
+    @login_required
     async def on_delete(self, req, resp, slug):
         session = Session()
         page = session.query(Page).filter_by(slug=slug).first()
@@ -389,6 +393,7 @@ class ContentBlockResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.get_media()
@@ -418,6 +423,7 @@ class ContentBlockDetailResource:
             }
         session.Сlose()
 
+    @login_required
     async def on_put(self, req, resp, identifier):
         session = Session()
         data = await req.media
@@ -433,6 +439,7 @@ class ContentBlockDetailResource:
             resp.media = {'message': 'ContentBlock updated'}
         session.close()
 
+    @login_required
     async def on_delete(self, req, resp, identifier):
         session = Session()
         contentBlock = session.query(ContentBlock).filter_by(identifier=identifier).first()
@@ -454,6 +461,7 @@ class ServantResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):   
         session = Session()
         data = await req.media
@@ -489,6 +497,7 @@ class ServantDetailResource:
             }
         session.close() 
 
+    @login_required
     async def on_put(self, req, resp, servant_id):
         session = Session()
         data = await req.media
@@ -506,7 +515,8 @@ class ServantDetailResource:
             session.commit()
             resp.mdeia = {'message', 'Servant updated'}
         session.close()           
-
+    
+    @login_required
     async def on_delete(self, req, resp, servant_id):
         session = Session()
         servant = session.query(Servant).get(servant_id)
@@ -528,6 +538,7 @@ class ParishionerResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media 
@@ -561,6 +572,7 @@ class ParishionerDetailResource:
             }
         session.close()        
 
+    @login_required
     async def on_put(self, req, resp, parishioner_id):
         session = Session()
         data = await req.media
@@ -578,6 +590,7 @@ class ParishionerDetailResource:
             resp.media = {'message': 'Parishioner updated'}
         session.close()        
         
+    @login_required    
     async def on_delete(self, req, resp, parishioner_id):
         session = Session()
         parishioner = session.query(Parishioner).get(parishioner_id)
@@ -610,6 +623,7 @@ class ServiceResource:
         session.close()
         resp.media = data 
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -648,6 +662,7 @@ class ServiceDetailResource:
             }
         session.close()        
 
+    @login_required
     async def on_put(self, req, res, identifier):
         session = Session()
         data = await req.media
@@ -667,7 +682,8 @@ class ServiceDetailResource:
             session.commit()
             resp.media = {'message': 'Service updated'}
         session.close()
-          
+
+    @login_required      
     async def on_delete(self, req, resp, identifier):    
         session = Session()
         service = service.query(Service).get(identifier)
@@ -699,6 +715,7 @@ class EventResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -738,6 +755,7 @@ class EventDetailResource:
                  }    
         session.close()
 
+    @login_required
     async def on_put(self, req, res, identifier):
         session = Session()
         data = await req.media
@@ -758,6 +776,7 @@ class EventDetailResource:
             resp.media = {'message': 'Event updated'}
         session.close()
 
+    @login_required
     async def on_delete(self, req, resp, identifier):
         session = Session()
         event = session.query(Event).get(identifier)
@@ -787,6 +806,7 @@ class NewResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -813,8 +833,9 @@ class NewDetailResource:
                 'title': new.title,
                 'content': new.content
                         }  
-        session.close()                
+        session.close()     
 
+    @login_required
     async def on_put(self, req, resp, identifier):
         session = Session()
         data = await req.media
@@ -830,6 +851,7 @@ class NewDetailResource:
             resp.media = {'message': 'New updated'}
         session.close()        
 
+    @login_required
     async def on_delete(self, req, resp, identifier):
         session = Session()
         new = session.query(New).get(identifier)
@@ -851,6 +873,7 @@ class PostResource:
         session.close()
         resp.media = data
 
+    @login_required
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
@@ -878,6 +901,7 @@ class PostDetailResource:
             }    
         session.close()    
 
+    @login_required
     async def on_put(self, req, resp, post_id):
         session = Session()
         data = await req.media
@@ -892,6 +916,7 @@ class PostDetailResource:
             resp.media = {'message': 'Post updated'}
         session.close()        
 
+    @login_required
     async def on_delete(self, req, resp, post_id):
         session = Session()
         post = session.query(Post).get(post_id)
@@ -928,3 +953,5 @@ app.add_route("/news", NewResorce())
 app.add_route("/news/{identifier}", NewDetailResource())
 app.add_route("/posts", PostResource())
 app.add_route("/posts/{post_id:int}", PostDetailResource())
+app.add_route('/login', LoginResource())
+app.add_route('/logout', LogoutResource())
