@@ -179,6 +179,7 @@ class LoginResource:
  
 
 class LogoutResource:
+    @login_required
     async def on_delete(self, req, resp):
         session = Session()
         data = await req.media
@@ -203,10 +204,6 @@ class LogoutResource:
 
         resp.media = {'message': 'Logged out successfully'}
 
-
-from functools import wraps
-from datetime import datetime, timedelta
-import falcon
 
 def login_required(func):
     @wraps(func)
