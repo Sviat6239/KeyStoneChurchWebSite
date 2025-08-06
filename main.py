@@ -575,7 +575,7 @@ class EventResource:
         events = session.query(Event).all()
         data = [{
             'id': ev.id,
-            'identifier': ev.identifer,
+            'identifier': ev.identifier,
             'title': ev.title, 
             'description': ev.description, 
             'date': ev.date, 
@@ -666,7 +666,7 @@ class NewResorce:
         data = [
             {
                 'id': n.id,
-                'identifier': n.identifer,
+                'identifier': n.identifier,
                 'title': n.title,
                 'content': n.content,
             }
@@ -689,7 +689,19 @@ class NewResorce:
 
 class NewDetailResource:
     async def on_get(self, req, resp, identifier):
-        pass
+        session = Session()
+        new = session.query(New).get(identifier)
+        if not new:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'New not found'}
+        else:
+            resp.media = {
+                'id': new.id,
+                'identifier': new.identifier,
+                'title': new.title,
+                'content': new.content
+                        }  
+        session.close()                
 
     async def on_put(self, req, resp, identifier):
         pass
