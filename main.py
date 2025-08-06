@@ -572,7 +572,7 @@ class ServiceDetailResource:
 class EventResource:
     async def op_get(self, req, resp):
         session = Session()
-        event = session.query(Event).all()
+        events = session.query(Event).all()
         data = [{
             'id': ev.id,
             'identifier': ev.identifer,
@@ -583,7 +583,7 @@ class EventResource:
             'location': ev.location, 
             'servant_id': ev.servant_id, 
             'parishioner_id': ev.parishioner_id
-            }]
+            }for ev in events]
         session.close()
         resp.media = data
 
@@ -661,7 +661,19 @@ class EventDetailResource:
 
 class NewResorce:
     async def on_get(self, req, resp):
-        pass
+        session = Session()
+        news = session.query(New).all()
+        data = [
+            {
+                'id': n.id,
+                'identifier': n.identifer,
+                'title': n.title,
+                'content': n.content,
+            }
+            for n in news
+        ]
+        session.close()
+        resp.media = data
 
     async def on_post(self, req, resp):
         pass
