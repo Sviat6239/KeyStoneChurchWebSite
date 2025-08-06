@@ -733,7 +733,11 @@ class NewDetailResource:
 
 class PostResource:
     async def on_get(self, req, resp):
-        pass
+        session = Session()
+        posts = session.query(Post).all()
+        data = [{'id': po.id, 'title': po.title, 'content': po.content}for po in posts]
+        session.close()
+        resp.media = data
 
     async def on_post(self, req, resp):
         pass
