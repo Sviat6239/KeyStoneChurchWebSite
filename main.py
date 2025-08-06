@@ -767,7 +767,18 @@ class PostDetailResource:
         session.close()    
 
     async def on_put(self, req, resp, post_id):
-        pass
+        session = Session()
+        data = await req.media
+        post = session.query(Post).get(post_id)
+        if not post:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Post not found'}
+        else:
+            post.title = data.get('title', post.title)
+            post.content = data.get('content', post.content)
+            session.commit()
+            resp.media = {'message', 'Post updated'}
+        session.close()        
 
     async def on_delete(self, req, resp, post_id):
         pass    
