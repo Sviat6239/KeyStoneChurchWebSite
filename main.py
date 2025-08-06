@@ -93,7 +93,7 @@ class Service(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
-    identifier = Column(String(255), nullable=False)
+    identifier = Column(String(255), nullable=False, unique=True)
     date = Column(Date, nullable=False)
     time = Column(Time, nullable=False)
     location = Column(String(255), nullable=False)
@@ -107,17 +107,31 @@ class Event(Base):
     __tablename__ = 'events'
 
     id = Column(Integer, primary_key=True)
+    identifier = Column(String(255), nullable=False, unique=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     date = Column(Date, nullable=False)
+    time = Column(Time, nullable=True)
     location = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
     servant_id = Column(Integer, ForeignKey('servants.id', ondelete='CASCADE'), nullable=False)
     parishioner_id = Column(Integer, ForeignKey('parishioners.id', ondelete='CASCADE'), nullable=False)
 
+
 class New(Base):
     __tablename__ = "news"
+
+    id = Column(Integer, primary_key=True)
+    identifier = Column(String(255), nullable=False, unique=True)
+    title = Column(String(320), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Post(Base):
+    __tablename__ = "posts"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(320), nullable=False)
@@ -554,15 +568,18 @@ class ServiceDetailResource:
             resp.media = {'message': 'Service deleted'}
         session.close()                    
 
+
 class EventResource:
     async def op_get(self, req, resp):
         session = Session()
         event = session.query(Event).all()
         data = [{
             'id': ev.id,
+            'identifier': ev.identifer,
             'title': ev.title, 
             'description': ev.description, 
             'date': ev.date, 
+            'time': ev.time,
             'location': ev.location, 
             'servant_id': ev.servant_id, 
             'parishioner_id': ev.parishioner_id
@@ -573,17 +590,65 @@ class EventResource:
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
+        identifier = data.get('identifier')
         title = data.get('title')
         description = data.get('description')
         date = data.get('date')
+        time = data.get('time')
         location = data.get('location')
         servant_id = data.get('servant id')
         parishioner_id = data.ger('parishioner id')
-        event = Event(title=title, description=description, date=date, location=location, servant_id=servant_id, parishioner_id=parishioner_id)
+        event = Event(identifier=identifier, title=title, description=description, date=date, location=location, servant_id=servant_id, parishioner_id=parishioner_id)
         session.add(event)
         session.commit()
         session.close()
         resp.media = {'message', 'Event created'}
+
+
+class EventDetailResource:
+    async def on_get(self, req, resp, identifier):
+        session = Session()
+        event = session.query(Event).get(identifier)
+        if not event:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Event not found'}
+        else:
+            resp.media = {
+                'id': event.id,
+                'identifier': event.identifier,
+                'title': event.title,
+                'description': event.description,
+                'date': event.date,
+                'time': event.time, 
+                'location': event.location,
+                'servant_id': event.servant_id,
+                'parishioner_id': event.parishioner_id
+                 }    
+        session.close()
+
+    async def on_put(self, req, res, identifier):
+        session = Session()
+        data = await req.media
+        event = session.query(Event).get(identifier)
+        if not event:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error', 'Event not found'}
+        else:
+            event.identifier = data.get('identifier')
+            event.title = data.get('title')
+            event.descrition = data.get('description')
+            event.date = data.get('date')
+            event.time = data.get('time')
+            event.location = data.get('location')
+            event.servant_id = data.get('servant id')
+            event.parishioner_id = data.get('parishioner id')
+            session.commit()
+            resp.media = {'message': 'Event updated'}
+        session.close()
+
+    async def on_delete(self, req, resp, identifier):
+        pass
+
 
 # DB init
 Base.metadata.create_all(engine)
