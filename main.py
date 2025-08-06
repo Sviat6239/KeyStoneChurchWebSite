@@ -324,7 +324,6 @@ class ContentBlockDetailResource:
 
     async def on_delete(self, req, resp, identifier):
         session = Session()
-        data = await req.media 
         contentBlock = session.query(ContentBlock).filter_by(identifier=identifier).first()
         if not contentBlock:
             resp.status = falcon.HTTP_404
@@ -604,7 +603,7 @@ class EventResource:
         session.add(event)
         session.commit()
         session.close()
-        resp.media = {'message', 'Event created'}
+        resp.media = {'message': 'Event created'}
 
 
 class EventDetailResource:
@@ -634,7 +633,7 @@ class EventDetailResource:
         event = session.query(Event).get(identifier)
         if not event:
             resp.status = falcon.HTTP_404
-            resp.media = {'error', 'Event not found'}
+            resp.media = {'error': 'Event not found'}
         else:
             event.identifier = data.get('identifier')
             event.title = data.get('title')
@@ -661,7 +660,7 @@ class EventDetailResource:
         session.close()
 
 
-class NewResorce:
+class NewResource:
     async def on_get(self, req, resp):
         session = Session()
         news = session.query(New).all()
@@ -779,7 +778,7 @@ class PostDetailResource:
             post.title = data.get('title', post.title)
             post.content = data.get('content', post.content)
             session.commit()
-            resp.media = {'message', 'Post updated'}
+            resp.media = {'message': 'Post updated'}
         session.close()        
 
     async def on_delete(self, req, resp, post_id):
