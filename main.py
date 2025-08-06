@@ -156,9 +156,9 @@ class LoginResource:
     login = data.get('login')
     password = data.get('password')
 
-    user = session.query(Admin).filter_by(login=login).first()
+    admin = session.query(Admin).filter_by(login=login).first()
 
-    if not user or not user.check_password(password):
+    if not admin or not admin.check_password(password):
         resp.status = falcon.HTTP_401
         resp.media = {'error': 'Invalid login or password'}
         return
