@@ -749,11 +749,22 @@ class PostResource:
         session.commit()
         session.close()
         resp.media = {'message': 'Post created'}
-        
+
 
 class PostDetailResource:
     async def on_get(self, req, resp, post_id):
-        pass
+        session = Session()
+        post = session.query(Post).get(post_id)
+        if not post:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Post not found'}
+        else:
+            resp.media = {
+                'id': post.id,
+                'title': post.title,
+                'content': post.content
+            }    
+        session.close()    
 
     async def on_put(self, req, resp, post_id):
         pass
