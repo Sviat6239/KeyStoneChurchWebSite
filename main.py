@@ -155,6 +155,7 @@ class Need(Base):
     __tablename__ = 'needs'
 
     id = Column(Integer, primary_key=True)
+    token = Column(String, nullable=False)
     title = Column(String(400), nullable=False)
     content = Column(Text, nullable=False)
     email = Column(String(60), nullable=False)
@@ -164,14 +165,6 @@ class Need(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
-class NeedToken(Base):
-    __tablename__ = 'need_tokens'
-
-    id = Column(Integer, primary_key=True)
-    need_id = Column(Integer, ForeignKey('needs.id'))
-    token = Column(String(12), unique=True)
-    created_at = Column(DateTime)
-    need = relationship("Need")    
 
 #login 
 class LoginResource:
@@ -950,18 +943,18 @@ class PostDetailResource:
 
 
 class NeedResource:
-    @login_required
     async def on_get(self, req, resp):
         session = Session()
         needs = session.query(Need).all()
-        data = [{'id': need.id, 
+        data = [{'id': need.id,
+                'token': need.token, 
                 'title': need.title, 
                 'content': need.content, 
                 'email': need.email, 
                 'phone': need.phone, 
-                'name': need.phone,
+                'name': need.name,
                 'surname': need.surname,
-                } for neeed in needs
+                } for need in needs
                 ]
         session.close()
         resp.media = data        
@@ -969,21 +962,24 @@ class NeedResource:
     async def on_post(self, req, resp):
         session = Session()
         data = await req.media
+        token = str(uuid.uuid4())
         title = data.get('title')
         content = data.get('content')
         email = data.get('email')
         phone = data.get('phone')
         name = data.get('name')
         surname = data.get('surname')
-        need = Need(title=title, content=content, email=email, phone=phone, name=name, surname=surname)
+        need = Need(token=token, title=title, content=content, email=email, phone=phone, name=name, surname=surname)
         session.add(need)
         session.commit()
         session.close()
-        resp.media = {'message': 'Need created'}
-
+        resp.media = {
+                    'message': 'Need created',
+                    'token': token}
+        
 
 class NeedDetailResource:
-    async def on_get(self, req, resp):
+    async def on_get(self, req, resp, token):
         pass
 
     async def on_put(self, req, resp):
