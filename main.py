@@ -980,12 +980,26 @@ class NeedResource:
 
 class NeedDetailResource:
     async def on_get(self, req, resp, token):
-        pass
+        
 
-    async def on_put(self, req, resp):
-        pass
+    async def on_put(self, req, resp, token):
+        session = Session()
+        need = session.query(Need).filter_by(token=token).first()
+        if not need:
+            resp.status = falcon.HTTP_404
+            resp.media = {'message': 'Need not found'}
+        else:
+            need.title = data.get('title', need.title)
+            need.content = data.get('content', need.content)
+            need.email = data.get('email', need.email)
+            need.phone = data.get('phone', need.phone)
+            need.name = data.get('name', need.name)
+            need.surname = data.get('surname', need.surname)
+            session.commit()
+            resp.media = {'message': 'Need updated'}
+        session.close()   
 
-    async def on_delete(self, req, resp):
+    async def on_delete(self, req, resp, token):
         pass
 
 
