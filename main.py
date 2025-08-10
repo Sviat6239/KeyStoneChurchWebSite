@@ -157,12 +157,21 @@ class Need(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(400), nullable=False)
     content = Column(Text, nullable=False)
-    email = Column(String(60), nulladle=False)
+    email = Column(String(60), nullable=False)
     phone = Column(String(15), nullable=True)
     name = Column(String(120), nullable=False)
     surname = Column(String(120), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class NeedToken(Base):
+    __tablename__ = 'need_tokens'
+
+    id = Column(Integer, primary_key=True)
+    need_id = Column(Integer, ForeignKey('needs.id'))
+    token = Column(String(12), unique=True)
+    created_at = Column(DateTime)
+    need = relationship("Need")    
 
 #login 
 class LoginResource:
@@ -972,6 +981,11 @@ class NeedResource:
         session.close()
         resp.media = {'message': 'Need created'}
 
+
+class NeedDetailResource:
+
+
+
 # DB init
 Base.metadata.create_all(engine)
 
@@ -997,3 +1011,4 @@ app.add_route("/posts", PostResource())
 app.add_route("/posts/{post_id:int}", PostDetailResource())
 app.add_route('/login', LoginResource())
 app.add_route('/logout', LogoutResource())
+app.add_route('/needs', NeedResource())
