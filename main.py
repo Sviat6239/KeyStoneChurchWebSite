@@ -957,6 +957,20 @@ class NeedResource:
         session.close()
         resp.media = data        
 
+    async def on_post(self, req, resp):
+        session = Session()
+        data = await req.media
+        title = data.get('title')
+        content = data.get('content')
+        email = data.get('email')
+        phone = data.get('phone')
+        name = data.get('name')
+        surname = data.get('surname')
+        need = Need(title=title, content=content, email=email, phone=phone, name=name, surname=surname)
+        session.add(need)
+        session.commit()
+        session.close()
+        resp.media = {'message': 'Need created'}
 
 # DB init
 Base.metadata.create_all(engine)
