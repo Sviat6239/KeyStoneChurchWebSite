@@ -983,7 +983,14 @@ class NeedResource:
 
 
 class NeedDetailResource:
+    async def on_get(self, req, resp):
+        pass
 
+    async def on_put(self, req, resp):
+        pass
+
+    async def on_delete(self, req, resp):
+        pass
 
 
 # DB init
