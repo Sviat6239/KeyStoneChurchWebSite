@@ -1014,7 +1014,16 @@ class NeedDetailResource:
         session.close()   
 
     async def on_delete(self, req, resp, token):
-        pass
+        session = Session()
+        need = session.query(Need).filter_by(token=token).first()
+        if not need:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Need not found'}
+        else: 
+            session.delete(need)
+            session.commit()
+            resp.media = {'message': 'Need deleted'}
+        session.close()    
 
 
 # DB init
@@ -1043,3 +1052,4 @@ app.add_route("/posts/{post_id:int}", PostDetailResource())
 app.add_route('/login', LoginResource())
 app.add_route('/logout', LogoutResource())
 app.add_route('/needs', NeedResource())
+app.add_route('/needs/{token}', NeedDetailResource())
