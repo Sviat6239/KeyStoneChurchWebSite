@@ -151,6 +151,18 @@ class SessionToken(Base):
     last_active = Column(DateTime)
     admin = relationship("Admin")
 
+class Need(Base):
+    __tablename__ = 'needs'
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(400), nullable=False)
+    content = Column(Text, nullable=False)
+    email = Column(String(60), nulladle=False)
+    phone = Column(String(15), nullable=True)
+    name = Column(String(120), nullable=False)
+    surname = Column(String(120), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
 #login 
 class LoginResource:
@@ -177,33 +189,6 @@ class LoginResource:
 
         resp.media = {'token': token}
  
-
-class LogoutResource:
-    @login_required
-    async def on_delete(self, req, resp):
-        session = Session()
-        data = await req.media
-        token = data.get('token')
-
-        if not token:
-            resp.status = falcon.HTTP_400
-            resp.media = {'error': 'Token required'}
-            session.close()
-            return
-
-        session_token = session.query(SessionToken).filter_by(token=token).first()
-        if not session_token:
-            resp.status = falcon.HTTP_404
-            resp.media = {'error': 'Token not found'}
-            session.close()
-            return
-
-        session.delete(session_token)
-        session.commit()
-        session.close()
-
-        resp.media = {'message': 'Logged out successfully'}
-
 
 def login_required(func):
     @wraps(func)
@@ -243,6 +228,34 @@ def login_required(func):
 
     return wrapper
 
+
+
+class LogoutResource:
+    @login_required
+    async def on_delete(self, req, resp):
+        session = Session()
+        data = await req.media
+        token = data.get('token')
+
+        if not token:
+            resp.status = falcon.HTTP_400
+            resp.media = {'error': 'Token required'}
+            session.close()
+            return
+
+        session_token = session.query(SessionToken).filter_by(token=token).first()
+        if not session_token:
+            resp.status = falcon.HTTP_404
+            resp.media = {'error': 'Token not found'}
+            session.close()
+            return
+
+        session.delete(session_token)
+        session.commit()
+        session.close()
+
+        resp.media = {'message': 'Logged out successfully'}
+        
 
 # Resource handlers
 class HomeResource:
@@ -927,6 +940,24 @@ class PostDetailResource:
         session.close()        
 
 
+class NeedResource:
+    @login_required
+    async def on_get(self, req, resp):
+        session = Session()
+        needs = session.query(Need).all()
+        data = [{'id': need.id, 
+                'title': need.title, 
+                'content': need.content, 
+                'email': need.email, 
+                'phone': need.phone, 
+                'name': need.phone,
+                'surname': need.surname,
+                } for neeed in needs
+                ]
+        session.close()
+        resp.media = data        
+
+
 # DB init
 Base.metadata.create_all(engine)
 
@@ -946,7 +977,7 @@ app.add_route("/services/", ServiceResource())
 app.add_route("/services/{identifier}", ServiceDetailResource())
 app.add_route("/events", EventResource())
 app.add_route("/events/{identifier}", EventDetailResource())
-app.add_route("/news", NewResorce())
+app.add_route("/news", NewResource())
 app.add_route("/news/{identifier}", NewDetailResource())
 app.add_route("/posts", PostResource())
 app.add_route("/posts/{post_id:int}", PostDetailResource())
