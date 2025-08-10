@@ -22,9 +22,23 @@ class SimpleLoggerMiddleware:
     async def process_response(self, req: Request, resp: Response, resource, req_succeeded):
         print(f"Response status: {resp.status}")
 
+class CORSMiddleware:
+    async def process_request(self, req, resp):
+        if req.method == 'OPTIONS':
+            resp.status = '200 OK'
+            resp.set_header('Access-Control-Allow-Origin', '*')
+            resp.set_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+            resp.set_header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+            resp.set_header('Access-Control-Max-Age', '86400')
+            resp.complete = True
+
+    async def process_response(self, req, resp, resource, req_succeeded):
+        resp.set_header('Access-Control-Allow-Origin', '*')
+        resp.set_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        resp.set_header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
 
 # Falcon app
-app = App(middleware=[SimpleLoggerMiddleware()])
+app = App(middleware=[SimpleLoggerMiddleware(), CORSMiddleware()])
 
 # Models
 class Admin(Base):
