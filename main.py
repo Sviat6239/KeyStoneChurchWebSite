@@ -179,7 +179,7 @@ def login_required(func):
                 resp.text = template.render(error='Invalid or expired token')
                 return
 
-            if session_token.last_active and (datetime.datetime.utcnow() - session_token.last_active) > timedelta(minutes=60):
+            if session_token.last_active and (datetime.datetime.utcnow() - session_token.last_active) > datetime.timedelta(minutes=60):
                 session.delete(session_token)
                 session.commit()
                 template = env.get_template('error.html')
@@ -194,6 +194,7 @@ def login_required(func):
             return await func(self, req, resp, *args, **kwargs)
         finally:
             session.close()
+
     return wrapper
 
 # Resources
@@ -204,7 +205,6 @@ class HomeResource:
         resp.content_type = 'text/html'
         resp.text = template.render(message="Welcome to the Parish Management System!")
 
-
 class LoginResource:
     async def on_get(self, req, resp):
         template = env.get_template('login.html')
@@ -214,7 +214,7 @@ class LoginResource:
     async def on_post(self, req, resp):
         session = Session()
         try:
-            data = await req.media()
+            data = await req.media
             login = data.get('login')
             password = data.get('password')
 
@@ -242,12 +242,17 @@ class LoginResource:
             )
             session.add(new_token)
             session.commit()
-            
+
             resp.set_cookie('auth_token', token, max_age=3600, path='/')
-            template = env.get_template('dashboard.html')
+            template = env.get_template('home.html')
             resp.content_type = 'text/html'
             resp.text = template.render(message=f"Welcome, {admin.login}!")
 
+        except Exception as e:
+            import traceback
+            resp.status = falcon.HTTP_500
+            resp.content_type = 'text/plain'
+            resp.text = traceback.format_exc()
         finally:
             session.close()
 
