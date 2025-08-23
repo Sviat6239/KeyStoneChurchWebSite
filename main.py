@@ -435,7 +435,7 @@ class AdminDeleteResource:
             session.close()
 
 
-class PageResource:
+class PageListResource:
     @login_required
     async def on_get(self, req, resp):
         session = Session()
@@ -443,10 +443,12 @@ class PageResource:
             pages = session.query(Page).all()
             template = env.get_template('pages_list.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(pages=pages)
+            resp.text = template.render(user=req.context.user, pages=pages)
         finally:
             session.close()
 
+
+class PageCreateResource:
     @login_required
     async def on_post(self, req, resp):
         session = Session()
@@ -458,7 +460,7 @@ class PageResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_400
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Title and slug are required')
+                resp.text = template.render(error='Title and slug are required', user=req.context.user)
                 return
             page = Page(title=title, slug=slug)
             session.add(page)
@@ -467,6 +469,7 @@ class PageResource:
             resp.location = '/pages'
         finally:
             session.close()
+
 
 class PageDetailResource:
     @login_required
@@ -478,14 +481,16 @@ class PageDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Page not found')
+                resp.text = template.render(error='Page not found', user=req.context.user)
                 return
             template = env.get_template('page_detail.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(page=page)
+            resp.text = template.render(user=req.context.user, page=page)
         finally:
             session.close()
 
+
+class PageUpdateResource:
     @login_required
     async def on_put(self, req, resp, slug):
         session = Session()
@@ -496,7 +501,7 @@ class PageDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Page not found')
+                resp.text = template.render(error='Page not found', user=req.context.user)
                 return
             page.title = data.get("title", page.title)
             page.slug = data.get("slug", page.slug)
@@ -506,6 +511,8 @@ class PageDetailResource:
         finally:
             session.close()
 
+
+class PageDeleteResource:
     @login_required
     async def on_delete(self, req, resp, slug):
         session = Session()
@@ -515,7 +522,7 @@ class PageDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Page not found')
+                resp.text = template.render(error='Page not found', user=req.context.user)
                 return
             session.delete(page)
             session.commit()
@@ -524,7 +531,8 @@ class PageDetailResource:
         finally:
             session.close()
 
-class ContentBlockResource:
+
+class ContentBlockListResource:
     @login_required
     async def on_get(self, req, resp):
         session = Session()
@@ -532,10 +540,12 @@ class ContentBlockResource:
             content_blocks = session.query(ContentBlock).all()
             template = env.get_template('content_blocks_list.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(content_blocks=content_blocks)
+            resp.text = template.render(user=req.context.user, content_blocks=content_blocks)
         finally:
             session.close()
 
+
+class ContentBlockCreateResource:
     @login_required
     async def on_post(self, req, resp):
         session = Session()
@@ -548,7 +558,7 @@ class ContentBlockResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_400
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='All fields are required')
+                resp.text = template.render(error='All fields are required', user=req.context.user)
                 return
             content_block = ContentBlock(page_slug=page_slug, identifier=identifier, content=content)
             session.add(content_block)
@@ -557,6 +567,7 @@ class ContentBlockResource:
             resp.location = '/content_blocks'
         finally:
             session.close()
+
 
 class ContentBlockDetailResource:
     @login_required
@@ -568,14 +579,16 @@ class ContentBlockDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Content Block not found')
+                resp.text = template.render(error='Content Block not found', user=req.context.user)
                 return
             template = env.get_template('content_block_detail.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(content_block=content_block)
+            resp.text = template.render(user=req.context.user, content_block=content_block)
         finally:
             session.close()
 
+
+class ContentBlockUpdateResource:
     @login_required
     async def on_put(self, req, resp, identifier):
         session = Session()
@@ -586,7 +599,7 @@ class ContentBlockDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Content Block not found')
+                resp.text = template.render(error='Content Block not found', user=req.context.user)
                 return
             content_block.page_slug = data.get('page_slug', content_block.page_slug)
             content_block.identifier = data.get('identifier', content_block.identifier)
@@ -597,6 +610,8 @@ class ContentBlockDetailResource:
         finally:
             session.close()
 
+
+class ContentBlockDeleteResource:
     @login_required
     async def on_delete(self, req, resp, identifier):
         session = Session()
@@ -606,7 +621,7 @@ class ContentBlockDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Content Block not found')
+                resp.text = template.render(error='Content Block not found', user=req.context.user)
                 return
             session.delete(content_block)
             session.commit()
@@ -614,6 +629,7 @@ class ContentBlockDetailResource:
             resp.location = '/content_blocks'
         finally:
             session.close()
+
 
 class ServantResource:
     @login_required
@@ -807,6 +823,7 @@ class ParishionerDetailResource:
         finally:
             session.close()
 
+
 class ServiceResource:
     @login_required
     async def on_get(self, req, resp):
@@ -845,6 +862,7 @@ class ServiceResource:
             resp.location = '/services'
         finally:
             session.close()
+
 
 class ServiceDetailResource:
     @login_required
@@ -1285,12 +1303,21 @@ class NeedDetailResource:
 
 # Routes
 app.add_route("/", HomeResource())
-app.add_route("/admins", AdminResource())
-app.add_route("/admins/{admin_id:int}", AdminDetailResource())
-app.add_route("/pages", PageResource())
+app.add_route('/admins', AdminListResource())
+app.add_route('/admins/create', AdminCreateResource())
+app.add_route('/admins/{admin_id}', AdminDetailResource())
+app.add_route('/admins/{admin_id}/update', AdminUpdateResource())
+app.add_route('/admins/{admin_id}/delete', AdminDeleteResource())
+app.add_route("/pages", PageListResource())
+app.add_route("/pages/create", PageCreateResource())
 app.add_route("/pages/{slug}", PageDetailResource())
-app.add_route("/content_blocks", ContentBlockResource())
+app.add_route("/pages/{slug}/update", PageUpdateResource())
+app.add_route("/pages/{slug}/delete", PageDeleteResource())
+app.add_route("/content_blocks", ContentBlockListResource())
+app.add_route("/content_blocks/create", ContentBlockCreateResource())
 app.add_route("/content_blocks/{identifier}", ContentBlockDetailResource())
+app.add_route("/content_blocks/{identifier}/update", ContentBlockUpdateResource())
+app.add_route("/content_blocks/{identifier}/delete", ContentBlockDeleteResource())
 app.add_route("/servants", ServantResource())
 app.add_route("/servants/{servant_id:int}", ServantDetailResource())
 app.add_route("/parishioners", ParishionerResource())
