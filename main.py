@@ -203,7 +203,7 @@ class HomeResource:
     async def on_get(self, req: Request, resp: Response):
         template = env.get_template('home.html')
         resp.content_type = 'text/html'
-        resp.text = template.render(message="Welcome to the Parish Management System!")
+        resp.text = template.render(message="Welcome to the Parish Management System!", user=req.context.user)
 
 class LoginResource:
     async def on_get(self, req, resp):
@@ -246,7 +246,7 @@ class LoginResource:
             resp.set_cookie('auth_token', token, max_age=3600, path='/')
             template = env.get_template('home.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(message=f"Welcome, {admin.login}!")
+            resp.text = template.render(message=f"Welcome, {admin.login}!", user=admin)
 
         except Exception as e:
             import traceback
@@ -256,13 +256,17 @@ class LoginResource:
         finally:
             session.close()
 
+from sqlalchemy.exc import SQLAlchemyError
+
 class LogoutResource:
     async def on_post(self, req, resp):
-        token = req.get_cookie('auth_token')
+        token = req.cookies.get('auth_token')
+        
+        template = env.get_template('login.html')
+        resp.content_type = 'text/html'
+
         if not token:
-            template = env.get_template('login.html')
-            resp.content_type = 'text/html'
-            resp.text = template.render(message='You are not logged in')
+            resp.text = template.render(message='You are not logged in', user=None)
             return
 
         session = Session()
@@ -271,12 +275,17 @@ class LogoutResource:
             if session_token:
                 session.delete(session_token)
                 session.commit()
-            resp.unset_cookie('auth_token')
-            template = env.get_template('login.html')
-            resp.content_type = 'text/html'
-            resp.text = template.render(message='Logged out successfully')
+            resp.delete_cookie('auth_token')
+
+            resp.text = template.render(message='Logged out successfully', user=None)
+        except SQLAlchemyError as e:
+            session.rollback()
+            resp.status = 500
+            resp.text = template.render(message='Server error during logout', user=None)
+            print(f"Logout error: {e}")
         finally:
             session.close()
+
 
 class AdminResource:
     @login_required
@@ -286,7 +295,7 @@ class AdminResource:
             admins = session.query(Admin).all()
             template = env.get_template('admins_list.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(admins=admins)
+            resp.text = template.render(user=req.context.user, admins=admins)
         finally:
             session.close()
 
@@ -294,14 +303,14 @@ class AdminResource:
     async def on_post(self, req, resp):
         session = Session()
         try:
-            data = await req.media()
+            data = await req.media
             login = data.get("login")
             password = data.get("password")
             if not login or not password:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_400
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Login and password are required')
+                resp.text = template.render(error='Login and password are required', user=req.context.user)
                 return
             admin = Admin(login=login)
             admin.set_password(password)
@@ -311,6 +320,7 @@ class AdminResource:
             resp.location = '/admins'
         finally:
             session.close()
+
 
 class AdminDetailResource:
     @login_required
@@ -322,11 +332,11 @@ class AdminDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found')
+                resp.text = template.render(error='Admin not found', user=req.context.user)
                 return
             template = env.get_template('admin_detail.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(admin=admin)
+            resp.text = template.render(user=req.context.user, admin=admin)
         finally:
             session.close()
 
@@ -334,13 +344,13 @@ class AdminDetailResource:
     async def on_put(self, req, resp, admin_id):
         session = Session()
         try:
-            data = await req.media()
+            data = await req.media
             admin = session.query(Admin).get(admin_id)
             if not admin:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found')
+                resp.text = template.render(error='Admin not found', user=req.context.user)
                 return
             admin.login = data.get("login", admin.login)
             password = data.get("password")
@@ -361,7 +371,7 @@ class AdminDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found')
+                resp.text = template.render(error='Admin not found', user=req.context.user)
                 return
             session.delete(admin)
             session.commit()
