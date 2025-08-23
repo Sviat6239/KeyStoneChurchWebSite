@@ -1,6 +1,0 @@
-falcon[asgi]
-uvicorn
-sqlalchemy
-werkzeug
-aiofiles
-jinja2
