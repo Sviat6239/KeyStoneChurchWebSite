@@ -2,9 +2,9 @@ from main import Session, Admin
 
 def CreateDefaultAdmin():
     session = Session()
-    admin = session.query(Admin).filter_by(login="superadmin").first()
+    admin = session.query(Admin).filter_by(login="superadmin1").first()
     if admin:
-        print("superadmin already exist!")
+        print("superadmin1 already exist!")
         session.close()
         return
 

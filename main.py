@@ -3,6 +3,7 @@ from falcon import Request, Response
 from falcon.asgi import App
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, Date, Time, func
 from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session, relationship
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 from jinja2 import Environment, FileSystemLoader
 import datetime
@@ -197,13 +198,42 @@ def login_required(func):
 
     return wrapper
 
+
+def get_current_user(req) -> "Admin | None":
+    token = req.cookies.get('auth_token')
+    if not token:
+        return None
+
+    session = DBSession()
+    try:
+        session_token = session.query(SessionToken).filter_by(token=token).first()
+        if not session_token:
+            return None
+        if session_token.last_active and (datetime.datetime.utcnow() - session_token.last_active) > datetime.timedelta(minutes=60):
+            session.delete(session_token)
+            session.commit()
+            return None
+
+        session_token.last_active = datetime.datetime.utcnow()
+        session.commit()
+
+        return session_token.admin
+    finally:
+        session.close()
+
 # Resources
 
 class HomeResource:
-    async def on_get(self, req: Request, resp: Response):
+    async def on_get(self, req, resp):
+        admin_user = get_current_user(req)
+
         template = env.get_template('home.html')
         resp.content_type = 'text/html'
-        resp.text = template.render(message="Welcome to the Parish Management System!", user=req.context.user)
+        resp.text = template.render(
+            message="Welcome to the Parish Management System!",
+            user=admin_user
+        )
+
 
 class LoginResource:
     async def on_get(self, req, resp):
@@ -242,8 +272,14 @@ class LoginResource:
             )
             session.add(new_token)
             session.commit()
-
-            resp.set_cookie('auth_token', token, max_age=3600, path='/')
+            resp.set_cookie(
+                'auth_token',
+                token,
+                max_age=3600,
+                path='/',
+                secure=False,  
+                http_only=True
+            )
             template = env.get_template('home.html')
             resp.content_type = 'text/html'
             resp.text = template.render(message=f"Welcome, {admin.login}!", user=admin)
@@ -255,8 +291,6 @@ class LoginResource:
             resp.text = traceback.format_exc()
         finally:
             session.close()
-
-from sqlalchemy.exc import SQLAlchemyError
 
 class LogoutResource:
     async def on_post(self, req, resp):
@@ -275,7 +309,7 @@ class LogoutResource:
             if session_token:
                 session.delete(session_token)
                 session.commit()
-            resp.delete_cookie('auth_token')
+            resp.unset_cookie('auth_token', path='/')
 
             resp.text = template.render(message='Logged out successfully', user=None)
         except SQLAlchemyError as e:
@@ -287,35 +321,43 @@ class LogoutResource:
             session.close()
 
 
-class AdminResource:
+# Просмотр списка админов
+class AdminListResource:
     @login_required
     async def on_get(self, req, resp):
+        user = req.context.user
         session = Session()
         try:
             admins = session.query(Admin).all()
             template = env.get_template('admins_list.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(user=req.context.user, admins=admins)
+            resp.text = template.render(user=user, admins=admins)
         finally:
             session.close()
 
+
+class AdminCreateResource:
     @login_required
     async def on_post(self, req, resp):
+        user = req.context.user
         session = Session()
         try:
             data = await req.media
             login = data.get("login")
             password = data.get("password")
+
             if not login or not password:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_400
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Login and password are required', user=req.context.user)
+                resp.text = template.render(error='Login and password are required', user=user)
                 return
+
             admin = Admin(login=login)
             admin.set_password(password)
             session.add(admin)
             session.commit()
+
             resp.status = falcon.HTTP_303
             resp.location = '/admins'
         finally:
@@ -325,6 +367,7 @@ class AdminResource:
 class AdminDetailResource:
     @login_required
     async def on_get(self, req, resp, admin_id):
+        user = req.context.user
         session = Session()
         try:
             admin = session.query(Admin).get(admin_id)
@@ -332,16 +375,20 @@ class AdminDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found', user=req.context.user)
+                resp.text = template.render(error='Admin not found', user=user)
                 return
+
             template = env.get_template('admin_detail.html')
             resp.content_type = 'text/html'
-            resp.text = template.render(user=req.context.user, admin=admin)
+            resp.text = template.render(user=user, admin=admin)
         finally:
             session.close()
 
+
+class AdminUpdateResource:
     @login_required
     async def on_put(self, req, resp, admin_id):
+        user = req.context.user
         session = Session()
         try:
             data = await req.media
@@ -350,20 +397,25 @@ class AdminDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found', user=req.context.user)
+                resp.text = template.render(error='Admin not found', user=user)
                 return
+
             admin.login = data.get("login", admin.login)
             password = data.get("password")
             if password:
                 admin.set_password(password)
             session.commit()
+
             resp.status = falcon.HTTP_303
             resp.location = f'/admins/{admin_id}'
         finally:
             session.close()
 
+
+class AdminDeleteResource:
     @login_required
     async def on_delete(self, req, resp, admin_id):
+        user = req.context.user
         session = Session()
         try:
             admin = session.query(Admin).get(admin_id)
@@ -371,14 +423,17 @@ class AdminDetailResource:
                 template = env.get_template('error.html')
                 resp.status = falcon.HTTP_404
                 resp.content_type = 'text/html'
-                resp.text = template.render(error='Admin not found', user=req.context.user)
+                resp.text = template.render(error='Admin not found', user=user)
                 return
+
             session.delete(admin)
             session.commit()
+
             resp.status = falcon.HTTP_303
             resp.location = '/admins'
         finally:
             session.close()
+
 
 class PageResource:
     @login_required
@@ -1229,7 +1284,7 @@ class NeedDetailResource:
             session.close()
 
 # Routes
-app.add_route("/home", HomeResource())
+app.add_route("/", HomeResource())
 app.add_route("/admins", AdminResource())
 app.add_route("/admins/{admin_id:int}", AdminDetailResource())
 app.add_route("/pages", PageResource())
