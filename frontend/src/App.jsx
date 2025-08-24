@@ -1,35 +1,107 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+const API_URL = "http://localhost:8000";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [admins, setAdmins] = useState([]);
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
+  const [editId, setEditId] = useState(null);
+
+  // ===== Получение всех админов =====
+  const fetchAdmins = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/admins`);
+      setAdmins(res.data);
+    } catch (err) {
+      console.error("Ошибка при получении админов:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
+
+  // ===== Создание нового админа =====
+  const createAdmin = async () => {
+    try {
+      await axios.post(`${API_URL}/admins/create`, { login, password });
+      setLogin("");
+      setPassword("");
+      fetchAdmins();
+    } catch (err) {
+      console.error("Ошибка при создании:", err);
+    }
+  };
+
+  // ===== Редактирование админа =====
+  const updateAdmin = async (id) => {
+    try {
+      await axios.put(`${API_URL}/admins/put/${id}`, { login, password });
+      setLogin("");
+      setPassword("");
+      setEditId(null);
+      fetchAdmins();
+    } catch (err) {
+      console.error("Ошибка при обновлении:", err);
+    }
+  };
+
+  // ===== Удаление админа =====
+  const deleteAdmin = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/admins/delete/${id}`);
+      fetchAdmins();
+    } catch (err) {
+      console.error("Ошибка при удалении:", err);
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ margin: "2rem" }}>
+      <h1>Админы</h1>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          type="text"
+          placeholder="Логин"
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        {editId ? (
+          <button onClick={() => updateAdmin(editId)}>Обновить</button>
+        ) : (
+          <button onClick={createAdmin}>Создать</button>
+        )}
+        {editId && <button onClick={() => setEditId(null)}>Отмена</button>}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+
+      <ul>
+        {admins.map((admin) => (
+          <li key={admin.id}>
+            {admin.login}{" "}
+            <button
+              onClick={() => {
+                setLogin(admin.login);
+                setPassword("");
+                setEditId(admin.id);
+              }}
+            >
+              Редактировать
+            </button>
+            <button onClick={() => deleteAdmin(admin.id)}>Удалить</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
-export default App
+export default App;
