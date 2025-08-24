@@ -2,9 +2,18 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+import cors from 'cors';
 
 const app = express();
 app.use(bodyParser.json());
+
+// ===== CORS =====
+app.use(cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
+
 const port = 8000;
 
 // ===== MongoDB Connection =====
@@ -141,14 +150,14 @@ function asyncHandler(fn) {
 
 // ===== Admin CRUD =====
 app.get('/admins', asyncHandler(async (req, res) => {
-    const admins = await Admin.find({}, 'id login');
-    res.json(admins);
+    const admins = await Admin.find({}, '_id login').lean();
+    res.json(admins.map(a => ({ id: a._id.toString(), login: a.login })));
 }));
 
 app.get('/admins/:id', asyncHandler(async (req, res) => {
-    const admin = await Admin.findById(req.params.id, 'id login');
+    const admin = await Admin.findById(req.params.id, '_id login').lean();
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
-    res.json(admin);
+    res.json({ id: admin._id.toString(), login: admin.login });
 }));
 
 app.post('/admins/create', asyncHandler(async (req, res) => {
@@ -159,7 +168,7 @@ app.post('/admins/create', asyncHandler(async (req, res) => {
     await admin.setPassword(password);
     await admin.save();
 
-    res.status(201).json({ id: admin._id, login: admin.login });
+    res.status(201).json({ id: admin._id.toString(), login: admin.login });
 }));
 
 app.put('/admins/put/:id', asyncHandler(async (req, res) => {
@@ -171,14 +180,14 @@ app.put('/admins/put/:id', asyncHandler(async (req, res) => {
     if (password) await admin.setPassword(password);
 
     await admin.save();
-    res.json({ id: admin._id, login: admin.login });
+    res.json({ id: admin._id.toString(), login: admin.login });
 }));
 
 app.delete('/admins/delete/:id', asyncHandler(async (req, res) => {
     const admin = await Admin.findById(req.params.id);
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
-    await admin.remove();
+    await admin.deleteOne();
     res.json({ message: 'Admin deleted' });
 }));
 
@@ -221,7 +230,7 @@ app.delete('/pages/delete/:slug', asyncHandler(async (req, res) => {
     const page = await Page.findOne({ slug: req.params.slug });
     if (!page) return res.status(404).json({ message: 'Page not found' });
 
-    await page.remove();
+    await page.deleteOne();
     res.json({ message: 'Page deleted' });
 }));
 
@@ -265,7 +274,7 @@ app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
     const cntblock = await ContentBlock.findOne({ identifier: req.params.identifier });
     if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
 
-    await cntblock.remove();
+    await cntblock.deleteOne();
     res, json({ message: 'ContentBlock deleted' });
 }));
 
