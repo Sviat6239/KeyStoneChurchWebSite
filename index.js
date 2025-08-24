@@ -225,6 +225,49 @@ app.delete('/pages/delete/:slug', asyncHandler(async (req, res) => {
     res.json({ message: 'Page deleted' });
 }));
 
+// ===== Content Block CRUD =====
+app.get('/cntblocks', asyncHandler(async (req, res) => {
+    const cntblocks = await ContentBlock.find({}, 'pageSlug identifier content').lean();
+    const result = cntblocks.map(cntb => ({ id: cntb._id.toString(), pageSlug: cntb.pageSlug, identifier: cntb.identifier, content: cntb.content }));
+    res.json(result);
+}));
+
+app.get('/cntblocks/:identifier', asyncHandler(async (req, res) => {
+    const cntblock = await ContentBlock.findOne({ pageSlug: req.params.pageSlug }, 'pageSlug identifier content').lean();
+    if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
+    res.json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+}));
+
+app.post('/cntblocks/create', asyncHandler(async (req, res) => {
+    const { pageSlug, identifier, content } = req.body;
+    if (!pageSlug || !identifier || !content) return res.status(400).json({ message: 'PageSlug, identifier and content required' });
+
+    const cntblock = new ContentBlock({ pageSlug, identifier, content });
+    await cntblock.save();
+
+    res.status(201).json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+}));
+
+app.put('/cntblocks/put/:identifier', asyncHandler(async (req, res) => {
+    const { pageSlug, identifier, content } = req.body;
+    const cntblock = await ContentBlock.findOne({ pageSlug: req.params.pageSLug });
+    if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
+
+    if (pageSlug) cntblock.pageSlug = pageSlug;
+    if (identifier) cntblock.identifier = identifier;
+    if (content) cntblock.content = content;
+
+    await page.save();
+    res.json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+}));
+
+app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
+    const cntblock = await ContentBlock.findOne({ identifier: req.params.identifier });
+    if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
+
+    await cntblock.remove();
+    res, json({ message: 'ContentBlock deleted' });
+}));
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
