@@ -232,7 +232,12 @@ app.get('/cntblocks', asyncHandler(async (req, res) => {
 app.get('/cntblocks/:identifier', asyncHandler(async (req, res) => {
     const cntblock = await ContentBlock.findOne({ pageSlug: req.params.pageSlug }, 'pageSlug identifier content').lean();
     if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
-    res.json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+    res.json({
+        id: cntblock._id.toString(),
+        pageSlug: cntblock.pageSlug,
+        identifier: cntblock.identifier,
+        content: cntblock.content
+    });
 }));
 
 app.post('/cntblocks/create', asyncHandler(async (req, res) => {
@@ -254,8 +259,13 @@ app.put('/cntblocks/put/:identifier', asyncHandler(async (req, res) => {
     if (identifier) cntblock.identifier = identifier;
     if (content) cntblock.content = content;
 
-    await page.save();
-    res.json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+    await cntblock.save();
+    res.json({
+        id: cntblock._id.toString(),
+        pageSlug: cntblock.pageSlug,
+        identifier: cntblock.identifier,
+        content: cntblock.content
+    });
 }));
 
 app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
@@ -276,7 +286,12 @@ app.get('/servants', asyncHandler(async (req, res) => {
 app.get('/servants/:id', asyncHandler(async (req, res) => {
     const servant = await Servant.findById({ id: req.params.id }, '_id name surname email phone role birthDate').lean();
     if (!servant) return res.status(404).json({ message: 'Servant not found' });
-    res.json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+    res.json({
+        id: servant._id.toString(),
+        name: servant.name,
+        surname: servant.surname,
+        role: servant.role
+    });
 }));
 
 app.post('/servants/create', asyncHandler(async (req, res) => {
@@ -336,8 +351,8 @@ app.get('/services', asyncHandler(async (req, res) => {
     res.json(result);
 }));
 
-app.get('/services/:identifier', asyncHandler(async (req, res) => {
-    const service = await Service.findOne({ identifier: req.params.identifier }, 'title description identifier date time location servantId');
+app.get('/services/:id', asyncHandler(async (req, res) => {
+    const service = await Service.findById({ id: req.params.id }, 'title description identifier date time location servantId');
     if (!service) return res.status(404).json({ message: 'Service not found' });
     res.json({
         id: service._id.toString,
@@ -351,7 +366,60 @@ app.get('/services/:identifier', asyncHandler(async (req, res) => {
     });
 }));
 
+app.post('/services/post', asyncHandler(async (req, res) => {
+    const { title, description, identifier, date, time, location, servantId } = req.body;
+    if (!title || !description || !identifier || !date || !time || !location || !servantId) {
+        return res.status(404).json({ message: 'Title, description, identifier, date, time, location and servantId are required' });
+    };
 
+    const service = new Sevice({ title, description, identifier, date, time, location, servantId });
+    await service.save();
+
+    res.status(201).json({
+        id: service._id.toString(),
+        title: service.title,
+        description: service.description,
+        identifier: service.identifier,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        servantId: service.servantId
+    });
+}));
+
+app.put('/services/put/:id', asyncHandler(async (req, res) => {
+    const { title, description, identifier, date, time, location, servantId } = req.body;
+    const service = await Service.findById({ id: req.params.id });
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+
+    if (title) service.title = title;
+    if (description) service.description = description;
+    if (identifier) service.identifier = identifier;
+    if (date) service.date = date;
+    if (time) service.time = time;
+    if (location) service.location = location;
+    if (servantId) service.servantId = servantId;
+
+    await service.save();
+    res.json({
+        id: service._id.toString(),
+        title: service.title,
+        description: service.description,
+        identifier: service.identifier,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        servantId: service.servantId
+    });
+}));
+
+app.delete('/services/delete/:id', asyncHandler(async (req, res) => {
+    const service = await Service.findById({ id: req.param.id });
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+
+    await service.deleteOne();
+    res.json({ message: 'Service deleted' });
+}));
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
