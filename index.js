@@ -152,6 +152,12 @@ function adminOnly(req, res, next) {
 }
 
 // ===== Async Handler =====
+function asyncHandler(fn) {
+    return (req, res, next) => {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
+}
+// ===== Routes =====
 app.post('/login', asyncHandler(async (req, res) => {
     const { login, password } = req.body;
     if (!login || !password) return res.status(400).json({ message: 'Login and password required' });
@@ -172,12 +178,6 @@ app.post('/login', asyncHandler(async (req, res) => {
 }));
 
 
-function asyncHandler(fn) {
-    return (req, res, next) => {
-        Promise.resolve(fn(req, res, next)).catch(next);
-    };
-}
-// ===== Routes =====
 app.get('/adminpanel', asyncHandler(async (req, res) => {
 
 }));
@@ -468,7 +468,87 @@ app.delete('/services/delete/:id', authMiddleware, adminOnly, asyncHandler(async
 }));
 
 // ===== Event CRUD =====
+app.get('/events', asyncHandler(async (req, res) => {
+    const events = await Event.find({}, '_id identifier title description date time location servantId').lean();
+    res.json(events.map(event => ({
+        id: event._id.toString(),
+        identifier: event.identifier,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        servantId: event.servantId
+    })));
+}));
 
+app.get('/events/:id', asyncHandler(async (req, res) => {
+    const event = await Event.findById({ id: req.params.id }, '_id identifier title description date time location servantId').lean();
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+    res.json({
+        id: event._id.toString(),
+        identifier: event.identifier,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        servantId: event.servantId
+    });
+}));
+
+app.post('/events/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { identifier, title, description, date, time, location, servantId } = req.body;
+    if (!identifier || !title || !description || !date || !time || !location || !servantId) return res.status(400).json({
+        message: 'Identifier, title, description, date, time, location and servantId are required'
+    });
+
+    const event = new Event({ identifier, title, description, date, time, location, servantId });
+    await event.save();
+
+    res.status(201).json({
+        id: event._id.toString(),
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        servantId: event.servantId
+    });
+}));
+
+app.put('/events/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { identifier, title, description, date, time, location, servantId } = req.body;
+    const event = await Event.findById({ id: req.params.id });
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+
+    if (identifier) event.identifier = identifier;
+    if (title) event.title = title;
+    if (description) event.description = description;
+    if (date) event.date = date;
+    if (time) event.time = time;
+    if (location) event.location = location;
+    if (servantId) event.servantId = servantId;
+
+    await event.save();
+    res.json({
+        id: event._id.toString(),
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        servantId: event.servantId
+    });
+}));
+
+app.delete('/events/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const event = await Event.findById({ id: req.params.id });
+    if (!event) return res, status(404).json({ message: 'Event not found' });
+
+    await event.deleteOne();
+    res.json({ message: 'Event deleted' });
+}));
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
