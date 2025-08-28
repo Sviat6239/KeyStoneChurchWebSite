@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
+import jwt from "jsonwebtoken";
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 
@@ -15,6 +16,8 @@ app.use(cors({
 }));
 
 const port = 8000;
+
+const SECRET = "supersecretkey";
 
 // ===== MongoDB Connection =====
 mongoose.connect('mongodb://localhost:27017/church', {
@@ -125,7 +128,50 @@ const needSchema = new mongoose.Schema({
 
 const Need = mongoose.model('Need', needSchema);
 
+
+// ===== AuthMiddleware =====
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return res.status(401).json({ message: "No token provided" });
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(403).json({ message: "Invalid token" });
+    }
+}
+
+function adminOnly(req, res, next) {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Admins only" });
+    }
+    next();
+}
+
 // ===== Async Handler =====
+app.post('/login', asyncHandler(async (req, res) => {
+    const { login, password } = req.body;
+    if (!login || !password) return res.status(400).json({ message: 'Login and password required' });
+
+    const admin = await Admin.findOne({ login });
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+    const valid = await admin.checkPassword(password);
+    if (!valid) return res.status(401).json({ message: 'Wrong password' });
+
+    const token = jwt.sign(
+        { id: admin._id.toString(), login: admin.login, role: 'admin' },
+        SECRET,
+        { expiresIn: '1h' }
+    );
+
+    res.json({ token });
+}));
+
+
 function asyncHandler(fn) {
     return (req, res, next) => {
         Promise.resolve(fn(req, res, next)).catch(next);
@@ -137,18 +183,18 @@ app.get('/adminpanel', asyncHandler(async (req, res) => {
 }));
 
 // ===== Admin CRUD =====
-app.get('/admins', asyncHandler(async (req, res) => {
+app.get('/admins', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const admins = await Admin.find({}, '_id login').lean();
     res.json(admins.map(a => ({ id: a._id.toString(), login: a.login })));
 }));
 
-app.get('/admins/:id', asyncHandler(async (req, res) => {
+app.get('/admins/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const admin = await Admin.findById(req.params.id, '_id login').lean();
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
     res.json({ id: admin._id.toString(), login: admin.login });
 }));
 
-app.post('/admins/create', asyncHandler(async (req, res) => {
+app.post('/admins/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { login, password } = req.body;
     if (!login || !password) return res.status(400).json({ message: 'Login and password required!' });
 
@@ -159,7 +205,7 @@ app.post('/admins/create', asyncHandler(async (req, res) => {
     res.status(201).json({ id: admin._id.toString(), login: admin.login });
 }));
 
-app.put('/admins/put/:id', asyncHandler(async (req, res) => {
+app.put('/admins/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { login, password } = req.body;
     const admin = await Admin.findById(req.params.id);
     if (!admin) return res.status(404).json({ message: 'Admin not found!' });
@@ -171,7 +217,7 @@ app.put('/admins/put/:id', asyncHandler(async (req, res) => {
     res.json({ id: admin._id.toString(), login: admin.login });
 }));
 
-app.delete('/admins/delete/:id', asyncHandler(async (req, res) => {
+app.delete('/admins/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const admin = await Admin.findById(req.params.id);
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
@@ -420,6 +466,9 @@ app.delete('/services/delete/:id', asyncHandler(async (req, res) => {
     await service.deleteOne();
     res.json({ message: 'Service deleted' });
 }));
+
+// ===== Event CRUD =====
+
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
