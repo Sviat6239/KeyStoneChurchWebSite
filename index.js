@@ -286,7 +286,7 @@ app.get('/cntblocks/:identifier', asyncHandler(async (req, res) => {
     });
 }));
 
-app.post('/cntblocks/create', asyncHandler(async (req, res) => {
+app.post('/cntblocks/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { pageSlug, identifier, content } = req.body;
     if (!pageSlug || !identifier || !content) return res.status(400).json({ message: 'PageSlug, identifier and content required' });
 
@@ -296,7 +296,7 @@ app.post('/cntblocks/create', asyncHandler(async (req, res) => {
     res.status(201).json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
 }));
 
-app.put('/cntblocks/put/:identifier', asyncHandler(async (req, res) => {
+app.put('/cntblocks/put/:identifier', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { pageSlug, identifier, content } = req.body;
     const cntblock = await ContentBlock.findOne({ pageSlug: req.params.pageSLug });
     if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
@@ -314,7 +314,7 @@ app.put('/cntblocks/put/:identifier', asyncHandler(async (req, res) => {
     });
 }));
 
-app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
+app.delete('/cntblock/delete/:identifier', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const cntblock = await ContentBlock.findOne({ identifier: req.params.identifier });
     if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
 
@@ -340,7 +340,7 @@ app.get('/servants/:id', asyncHandler(async (req, res) => {
     });
 }));
 
-app.post('/servants/create', asyncHandler(async (req, res) => {
+app.post('/servants/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { name, surname, role, } = req.body;
     if (!name || !surname || !role) return res.status(400).json({ message: 'Name, surname and role are required' });
 
@@ -355,7 +355,7 @@ app.post('/servants/create', asyncHandler(async (req, res) => {
     });
 }));
 
-app.put('/servants/put/:id', asyncHandler(async (req, res) => {
+app.put('/servants/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { name, surname, role } = req.body;
     const servant = await Servant.findById({ id: req.params.id }, '_id name surname role').lean();
     if (!servant) return res.status(404).json({ message: 'Servant not found' });
@@ -373,7 +373,7 @@ app.put('/servants/put/:id', asyncHandler(async (req, res) => {
     });
 }));
 
-app.delete('/servants/delete/:id', asyncHandler(async (req, res) => {
+app.delete('/servants/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const servant = await Servant.findById({ id: req.params.id });
     if (!servant) return res.status(404).json({ message: 'Servant not found' });
 
@@ -412,7 +412,7 @@ app.get('/services/:id', asyncHandler(async (req, res) => {
     });
 }));
 
-app.post('/services/post', asyncHandler(async (req, res) => {
+app.post('/services/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { title, description, identifier, date, time, location, servantId } = req.body;
     if (!title || !description || !identifier || !date || !time || !location || !servantId) {
         return res.status(404).json({ message: 'Title, description, identifier, date, time, location and servantId are required' });
@@ -433,7 +433,7 @@ app.post('/services/post', asyncHandler(async (req, res) => {
     });
 }));
 
-app.put('/services/put/:id', asyncHandler(async (req, res) => {
+app.put('/services/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const { title, description, identifier, date, time, location, servantId } = req.body;
     const service = await Service.findById({ id: req.params.id });
     if (!service) return res.status(404).json({ message: 'Service not found' });
@@ -459,7 +459,7 @@ app.put('/services/put/:id', asyncHandler(async (req, res) => {
     });
 }));
 
-app.delete('/services/delete/:id', asyncHandler(async (req, res) => {
+app.delete('/services/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const service = await Service.findById({ id: req.param.id });
     if (!service) return res.status(404).json({ message: 'Service not found' });
 
