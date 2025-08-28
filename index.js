@@ -64,24 +64,10 @@ const ContentBlock = mongoose.model('ContentBlock', contentBlockSchema);
 const servantSchema = new mongoose.Schema({
     name: { type: String, required: true, maxlength: 255 },
     surname: { type: String, required: true, maxlength: 255 },
-    email: { type: String, unique: true, maxlength: 255 },
-    phone: { type: String, unique: true, maxlength: 50 },
     role: { type: String },
-    birthDate: { type: Date },
 }, { timestamps: true });
 
 const Servant = mongoose.model('Servant', servantSchema);
-
-// Parishioner
-const parishionerSchema = new mongoose.Schema({
-    name: { type: String, required: true, maxlength: 255 },
-    surname: { type: String, required: true, maxlength: 255 },
-    email: { type: String, unique: true, maxlength: 255 },
-    phone: { type: String, unique: true, maxlength: 50 },
-    birthDate: { type: Date },
-}, { timestamps: true });
-
-const Parishioner = mongoose.model('Parishioner', parishionerSchema);
 
 // Service
 const serviceSchema = new mongoose.Schema({
@@ -92,7 +78,6 @@ const serviceSchema = new mongoose.Schema({
     time: { type: String, required: true },
     location: { type: String, required: true, maxlength: 255 },
     servantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Servant', required: true },
-    parishionerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Parishioner', required: true },
 }, { timestamps: true });
 
 const Service = mongoose.model('Service', serviceSchema);
@@ -106,7 +91,6 @@ const eventSchema = new mongoose.Schema({
     time: { type: String },
     location: { type: String, required: true, maxlength: 255 },
     servantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Servant', required: true },
-    parishionerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Parishioner', required: true },
 }, { timestamps: true });
 
 const Event = mongoose.model('Event', eventSchema);
@@ -147,6 +131,10 @@ function asyncHandler(fn) {
         Promise.resolve(fn(req, res, next)).catch(next);
     };
 }
+// ===== Routes =====
+app.get('/adminpanel', asyncHandler(async (req, res) => {
+
+}));
 
 // ===== Admin CRUD =====
 app.get('/admins', asyncHandler(async (req, res) => {
@@ -277,6 +265,43 @@ app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
     await cntblock.deleteOne();
     res, json({ message: 'ContentBlock deleted' });
 }));
+
+// ===== Servant CRUD =====
+app.get('/servants', asyncHandler(async (req, res) => {
+    const sevants = await Servant.find({}, 'name surname role').lean();
+    const result = servantSchema.map(srv => ({ id: srv._id.toString(), name: srv.name, surname: srv.surname, role: srv.role }));
+    res.json(result);
+}));
+
+app.get('/servants/:id', asyncHandler(async (req, res) => {
+    const servant = await Servant.findById({ id: req.params.id }, '_id name surname email phone role birthDate').lean();
+    if (!servant) return res.status(404).json({ message: 'Servant not found' });
+    res.json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+}));
+
+app.post('/servants/create', asyncHandler(async (req, res) => {
+    const { name, surname, role, } = req.body;
+    if (!name || !surname || !role) return res.status(400).json({ message: 'Name, surname and role are required' });
+
+    const servant = new Servant({ name, surname, role });
+    await servant.save();
+
+    res.status(201).json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+}));
+
+app.put('/servants/put/:id', asyncHandler(async (req, res) => {
+    const { name, surname, role } = req.body;
+    const servant = await Servant.findById({ id: req.params.id }, '_id name surname role').lean();
+    if (!servant) return res.status(404).json({ message: 'Servant not found' });
+
+    if (name) servant.name = name;
+    if (surname) servant.surname = surname;
+    if (role) servant.role = role;
+
+    await servant.save()
+    res.json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+}));
+
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
