@@ -263,7 +263,7 @@ app.delete('/cntblock/delete/:identifier', asyncHandler(async (req, res) => {
     if (!cntblock) return res.status(404).json({ message: 'ContentBlock not found' });
 
     await cntblock.deleteOne();
-    res, json({ message: 'ContentBlock deleted' });
+    res.json({ message: 'ContentBlock deleted' });
 }));
 
 // ===== Servant CRUD =====
@@ -286,7 +286,12 @@ app.post('/servants/create', asyncHandler(async (req, res) => {
     const servant = new Servant({ name, surname, role });
     await servant.save();
 
-    res.status(201).json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+    res.status(201).json({
+        id: servant._id.toString(),
+        name: servant.name,
+        surname: servant.surname,
+        role: servant.role
+    });
 }));
 
 app.put('/servants/put/:id', asyncHandler(async (req, res) => {
@@ -299,8 +304,53 @@ app.put('/servants/put/:id', asyncHandler(async (req, res) => {
     if (role) servant.role = role;
 
     await servant.save()
-    res.json({ id: servant._id.toString(), name: servant.name, surname: servant.surname, role: servant.role });
+    res.json({
+        id: servant._id.toString(),
+        name: servant.name,
+        surname: servant.surname,
+        role: servant.role
+    });
 }));
+
+app.delete('/servants/delete/:id', asyncHandler(async (req, res) => {
+    const servant = await Servant.findById({ id: req.params.id });
+    if (!servant) return res.status(404).json({ message: 'Servant not found' });
+
+    await servant.deleteOne();
+    res.json({ message: 'Servant delted' });
+}));
+
+// ===== Service CRUD =====
+app.get('/services', asyncHandler(async (req, res) => {
+    const services = await Service.find({}, 'title description identifier date time location servantId').lean();
+    const result = services.map(service => ({
+        id: service._id.toString(),
+        title: service.title,
+        description: service.description,
+        identifier: service.identifier,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        servantId: service.servantId
+    }));
+    res.json(result);
+}));
+
+app.get('/services/:identifier', asyncHandler(async (req, res) => {
+    const service = await Service.findOne({ identifier: req.params.identifier }, 'title description identifier date time location servantId');
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+    res.json({
+        id: service._id.toString,
+        title: service.title,
+        description: service.description,
+        identifier: service.identifier,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        servantId: service.servantId
+    });
+}));
+
 
 
 // ===== Error Handling =====
