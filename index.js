@@ -773,6 +773,14 @@ app.put('/needs/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, re
     });
 }));
 
+app.delete('/needs/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const need = await Need.findById({ id: req.params.id });
+    if (!need) return res.status(404).json({ message: 'Need not found' });
+
+    await need.deleteOne();
+    res.json({ message: 'Need deleted' });
+}));
+
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
     console.error(err);
