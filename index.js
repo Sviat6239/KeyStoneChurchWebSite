@@ -659,6 +659,20 @@ app.get('/posts/:id', asyncHandler(async (req, res) => {
     });
 }));
 
+app.post('/posts/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { title, content } = req.body;
+    if (!title || !content) return res.status(400).json({ message: 'Titile and content are required' });
+
+    const post = new Post({ title, content });
+    await post.save();
+
+    res.status(201).json({
+        id: post._id.toString(),
+        title: post.title,
+        content: post.content
+    });
+}));
+
 
 
 // ===== Error Handling =====
