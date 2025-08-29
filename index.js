@@ -713,12 +713,32 @@ app.get('/needs', asyncHandler(async (req, res) => {
     req.json(result);
 }));
 
-app.get('/need/:id', asyncHandler(async (req, res) => {
+app.get('/needs/:id', asyncHandler(async (req, res) => {
     const need = await Need.findById({ id: req.params.id }, 'token title content email phone name surname').lean();
     if (!need) return res.status(404).json({ message: 'Need not found' });
     res.json({
         id: need._id.toString(),
         token: need.token,
+        content: need.content,
+        email: need.email,
+        phone: need.phone,
+        name: need.name,
+        surname: need.surname
+    });
+}));
+
+app.post('/needs/creaate', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { token, title, content, email, phone, name, surname } = req.body;
+    if (!token || !title || !content || !email || !phone || !name || !surname) return res.status(400).json({
+        message: 'Token, title, content, email, phone, name and surname are required'
+    });
+    const need = new Need({ token, title, content, phone, name, surname });
+    await need.save();
+
+    res.status(200).json({
+        id: need._id.toString(),
+        token: need.token,
+        title: need.title,
         content: need.content,
         email: need.email,
         phone: need.phone,
