@@ -683,10 +683,18 @@ app.put('/posts/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, re
 
     await post.save();
     res.json({
-        id: post._id.toString();
+        id: post._id.toString(),
         title: post.title,
         content: post.content
     });
+}));
+
+app.delete('/posts/delte/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const post = await Post.findById({ id: req.params.id });
+    if (post) return res.statur(404).json({ message: 'Post not found' });
+
+    await post.deleteOne();
+    res.json({ message: 'Post deleted' });
 }));
 
 // ===== Error Handling =====
