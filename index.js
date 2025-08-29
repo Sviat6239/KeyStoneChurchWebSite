@@ -544,10 +544,73 @@ app.put('/events/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, r
 
 app.delete('/events/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
     const event = await Event.findById({ id: req.params.id });
-    if (!event) return res, status(404).json({ message: 'Event not found' });
+    if (!event) return res.status(404).json({ message: 'Event not found' });
 
     await event.deleteOne();
     res.json({ message: 'Event deleted' });
+}));
+
+// ===== News CRUD =====
+app.get('/news', asyncHandler(async (req, res) => {
+    const news = await New.find({}, 'identifier title content').lean();
+    const result = news.map(n => ({
+        id: n._id.toString(),
+        identifier: n.identifier,
+        content: n.content
+    }));
+    res.json(result);
+}));
+
+app.get('/news/:id', asyncHandler(async (req, res) => {
+    const news = await New.findById({ id: req.params.id }, 'identifier title content');
+    if (!news) return res.status(404).json({ message: 'News not found' });
+    res.json({
+        id: news._id.tiString(),
+        identifier: news.identifier,
+        title: news.title,
+        content: news.content
+    });
+}));
+
+app.post('/news/create', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { identifier, title, content } = req.body;
+    if (!identifier || !title || !content) return res.status(400).json({ message: 'Identifier, title and content are required' });
+
+    const news = new New({ identifier, title, content });
+    await news.save();
+
+    res.status(201).json({
+        id: news._id.toString(),
+        identifier: news.identifier,
+        title: news.title,
+        content: news.content
+    });
+}));
+
+app.put('/news/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { identifier, title, slug } = req.body;
+    const news = await New.findById({ id: req.params.id });
+    if (!news) return res.status(404).json({ message: 'News not found' });
+
+    if (identifier) news.identifier = identifier;
+    if (title) news.title = title;
+    if (content) news.content = content;
+
+    await news.save();
+    res.json({
+        id: news._id.toString(),
+        identifier: news.identifier,
+        title: news.title,
+        content: news.content
+    });
+}));
+
+app.delete('/news/delete/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const news = await New.findById({ id: req.params.id });
+    if (!news) return res.status(404).json({ message: 'News not found' });
+
+    await news.deleteOne();
+    res.json({ message: 'News deleted' });
 }));
 
 // ===== Error Handling =====
