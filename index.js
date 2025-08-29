@@ -747,6 +747,32 @@ app.post('/needs/creaate', authMiddleware, adminOnly, asyncHandler(async (req, r
     });
 }));
 
+app.put('/needs/put/:id', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
+    const { token, title, content, email, phone, name, surname } = req.body;
+    const need = await Need.findById({ id: req.params.id });
+    if (!need) return res.status(404).json({ message: 'Need not found' });
+
+    if (token) need.token = token;
+    if (title) need.title = title;
+    if (content) need.content = content;
+    if (email) need.email = email;
+    if (phone) need.phone = phone;
+    if (name) need.name = name;
+    if (surname) need.surname = surname;
+
+    await need.save();
+    res.json({
+        id: need._id.toString(),
+        token: need.token,
+        title: need.title,
+        content: need.content,
+        email: need.email,
+        phone: need.phone,
+        name: need.name,
+        surname: need.surname
+    });
+}));
+
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
     console.error(err);
