@@ -697,6 +697,24 @@ app.delete('/posts/delte/:id', authMiddleware, adminOnly, asyncHandler(async (re
     res.json({ message: 'Post deleted' });
 }));
 
+// ===== Need =====
+app.get('/needs', asyncHandler(async (req, res) => {
+    const needs = await Need.find({}, 'id token title content email phone name surname').lean();
+    const result = needs.map(ne => ({
+        id: ne._id.toString(),
+        token: ne.token,
+        title: ne.title,
+        content: ne.content,
+        email: ne.email,
+        phone: ne.phone,
+        name: ne.name,
+        surname: ne.surname
+    }));
+    req.json(result);
+}));
+
+
+
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
     console.error(err);
