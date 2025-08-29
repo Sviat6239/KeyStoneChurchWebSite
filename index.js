@@ -713,7 +713,19 @@ app.get('/needs', asyncHandler(async (req, res) => {
     req.json(result);
 }));
 
-
+app.get('/need/:id', asyncHandler(async (req, res) => {
+    const need = await Need.findById({ id: req.params.id }, 'token title content email phone name surname').lean();
+    if (!need) return res.status(404).json({ message: 'Need not found' });
+    res.json({
+        id: need._id.toString(),
+        token: need.token,
+        content: need.content,
+        email: need.email,
+        phone: need.phone,
+        name: need.name,
+        surname: need.surname
+    });
+}));
 
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
