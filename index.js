@@ -649,6 +649,18 @@ app.get('/posts', asyncHandler(async (req, res) => {
     }));
 }));
 
+app.get('/posts/:id', asyncHandler(async (req, res) => {
+    const post = await Post.findById({ id: req.params.id }, 'title content').lean();
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    res.json({
+        id: post._id.toString(),
+        title: post.title,
+        content: post.content
+    });
+}));
+
+
+
 // ===== Error Handling =====
 app.use((err, req, res, next) => {
     console.error(err);
