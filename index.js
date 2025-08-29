@@ -228,14 +228,22 @@ app.delete('/admins/delete/:id', authMiddleware, adminOnly, asyncHandler(async (
 // ===== Page CRUD =====
 app.get('/pages', asyncHandler(async (req, res) => {
     const pages = await Page.find({}, 'title slug').lean();
-    const result = pages.map(p => ({ id: p._id.toString(), title: p.title, slug: p.slug }));
+    const result = pages.map(p => ({
+        id: p._id.toString(),
+        title: p.title,
+        slug: p.slug
+    }));
     res.json(result);
 }));
 
 app.get('/pages/:slug', asyncHandler(async (req, res) => {
     const page = await Page.findOne({ slug: req.params.slug }, 'title slug').lean();
     if (!page) return res.status(404).json({ message: 'Page not found' });
-    res.json({ id: page._id.toString(), title: page.title, slug: page.slug });
+    res.json({
+        id: page._id.toString(),
+        title: page.title,
+        slug: page.slug
+    });
 }));
 
 app.post('/pages/create', asyncHandler(async (req, res) => {
@@ -245,7 +253,11 @@ app.post('/pages/create', asyncHandler(async (req, res) => {
     const page = new Page({ title, slug });
     await page.save();
 
-    res.status(201).json({ id: page._id.toString(), title: page.title, slug: page.slug });
+    res.status(201).json({
+        id: page._id.toString(),
+        title: page.title,
+        slug: page.slug
+    });
 }));
 
 app.put('/pages/put/:slug', asyncHandler(async (req, res) => {
@@ -257,7 +269,11 @@ app.put('/pages/put/:slug', asyncHandler(async (req, res) => {
     if (slug) page.slug = slug;
 
     await page.save();
-    res.json({ id: page._id.toString(), title: page.title, slug: page.slug });
+    res.json({
+        id: page._id.toString(),
+        title: page.title,
+        slug: page.slug
+    });
 }));
 
 app.delete('/pages/delete/:slug', asyncHandler(async (req, res) => {
@@ -271,7 +287,12 @@ app.delete('/pages/delete/:slug', asyncHandler(async (req, res) => {
 // ===== Content Block CRUD =====
 app.get('/cntblocks', asyncHandler(async (req, res) => {
     const cntblocks = await ContentBlock.find({}, 'pageSlug identifier content').lean();
-    const result = cntblocks.map(cntb => ({ id: cntb._id.toString(), pageSlug: cntb.pageSlug, identifier: cntb.identifier, content: cntb.content }));
+    const result = cntblocks.map(cntb => ({
+        id: cntb._id.toString(),
+        pageSlug: cntb.pageSlug,
+        identifier: cntb.identifier,
+        content: cntb.content
+    }));
     res.json(result);
 }));
 
@@ -293,7 +314,12 @@ app.post('/cntblocks/create', authMiddleware, adminOnly, asyncHandler(async (req
     const cntblock = new ContentBlock({ pageSlug, identifier, content });
     await cntblock.save();
 
-    res.status(201).json({ id: cntblock._id.toString(), pageSlug: cntblock.pageSlug, identifier: cntblock.identifier, content: cntblock.content });
+    res.status(201).json({
+        id: cntblock._id.toString(),
+        pageSlug: cntblock.pageSlug,
+        identifier: cntblock.identifier,
+        content: cntblock.content
+    });
 }));
 
 app.put('/cntblocks/put/:identifier', authMiddleware, adminOnly, asyncHandler(async (req, res) => {
@@ -611,6 +637,16 @@ app.delete('/news/delete/:id', authMiddleware, adminOnly, asyncHandler(async (re
 
     await news.deleteOne();
     res.json({ message: 'News deleted' });
+}));
+
+// ===== Post CRUD =====
+app.get('/posts', asyncHandler(async (req, res) => {
+    const posts = await Post.find({}, 'title content').lean();
+    const result = posts.map(posts => ({
+        id: posts._id.toString(),
+        title: posts.title,
+        content: posts.content
+    }));
 }));
 
 // ===== Error Handling =====
